@@ -1,0 +1,5 @@
+package = "hogwarts-legacy"
+version = "0.1.0"
+lua = "5.4"
+
+[dependencies]

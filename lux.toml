@@ -1,0 +1,25 @@
+package = "Dualsense-games"
+version = "0.1.0"
+lua = "5.4"
+
+[description]
+summary = ""
+maintainer = "meskill"
+labels = [ "game" ]
+
+[workspace]
+members = [
+    "glob:core/*",
+    "glob:backends/*",
+]
+
+# [source]
+# When publishing, configure the source URL here
+
+[dependencies]
+
+[run]
+args = [ "src/main.lua" ]
+
+[build]
+type = "builtin"

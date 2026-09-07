@@ -1,0 +1,13 @@
+package = "backends_dsx"
+version = "0.1.0"
+lua = "5.4"
+
+[dependencies]
+dkjson = "2.11-1"
+
+[dependencies.net]
+path = "../../core/net"
+version = "0.1.0"
+
+[build]
+type = "builtin"
