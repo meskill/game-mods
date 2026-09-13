@@ -31,19 +31,21 @@ Angle-bracket values are placeholders, not literal Nushell arguments.
 
 ### Type checking
 
-Use `lx check --path <path>` to type check the affected package. From the repository root:
+Run `lx check` from the repository root; it checks every workspace member at once.
 
 ```nu
-lx check --path core/net
-lx check --path backends/dsx
+lx check
 ```
 
-`--path` takes a filesystem path, not a package name.
+Do not pass `--path`: it treats the directory as a standalone project and litters the
+member with its own `lux.lock`, `.lux/` tree, and `.luarc.json`. There is no supported
+way to check a single package today. Type-library configuration therefore belongs in
+the root `.luarc.json` (`workspace.library`), not in per-package copies.
 
 ## Working discipline
 
 - Add dependencies through Lux in the consuming package, not the root package by default. Let Lux manage dependency resolution and `lux.lock`; do not hand-edit the lockfile or use standalone LuaRocks commands as a substitute.
 - Preserve the manifest's Lua version and existing dependency style, including local path dependencies. Do not upgrade tooling or unrelated dependencies as part of ordinary Lua work.
-- Follow each package's `[build]` and `[test]` configuration. The current `net` and `backends_dsx` packages use the builtin build backend and Busted tests; run them through Lux rather than invoking Busted directly.
+- Follow each package's `[build]` and `[test]` configuration. The current packages use the builtin build backend and Busted tests; run them through Lux rather than invoking Busted directly.
 - After a change, run the affected package's type check and tests; build when the change affects packaging or native dependencies. Include dependent packages when their behavior is affected.
 - Report the exact commands and outcomes. Missing build tools, failed dependency installation, and unavailable test backends are blockers, not successful checks.

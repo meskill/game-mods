@@ -28,4 +28,4 @@ This will create a new shell in the proper environment with the required build t
 
 ### Lua
 
-Use lux to manage dependencies and verify the lua scripts. To add dependency use `lx add <package>` command. To check the script use `lx check --path <path_to_package>`. To run tests use `lx test -p <package>`.
+Use lux to manage dependencies and verify the lua scripts. To add dependency use `lx add <package>` command. To check the scripts use `lx check` (no way to run separately for package for now). To run tests use `lx test -p <package>`.

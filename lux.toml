@@ -11,6 +11,7 @@ labels = [ "game" ]
 members = [
     "glob:core/*",
     "glob:backends/*",
+    "glob:games/ue4ss/*",
 ]
 
 # [source]

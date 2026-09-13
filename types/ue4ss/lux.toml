@@ -1,0 +1,27 @@
+package = "ue4ss"
+# Base release both files descend from.
+version = "3.0.1"
+lua = "5.4"
+
+# The two files are separate APIs with separate histories, so each has its own pin.
+#
+# src/UEHelpers.lua — Lua helper module loaded at runtime via require("UEHelpers").
+#   Revision: 25d3dc38cdbc9820803706b71a96fa0604cb7a83 (2025-10-21), its last change
+#             upstream; reports UEHelpers.GetUEHelpersVersion() == 3.
+#   Source:   UE4SS_v3.0.1-568-g25d3dc3.zip:ue4ss/Mods/shared/UEHelpers/UEHelpers.lua
+#   sha256:   7476f02eef0c87bfeab169f2ffe2e704363faeaae4bf9f1bda574b1e34f4a0e9
+#   Byte-identical to the copy Hogwarts Legacy loads.
+#
+# src/Types.lua — UE4SS API declarations for the language server. Never require it:
+#   under a real VM its enum tables would overwrite UE4SS globals.
+#   Revision: ba2efd55c6f033df807ade1f100ab8debfe34f39 (2026-08-28), its last change
+#             upstream, shipped in build UE4SS_v3.0.1-1133-gb4cefa18.
+#   Source:   zDEV-UE4SS_v3.0.1-1133-gb4cefa18.zip:ue4ss/Mods/shared/Types.lua
+#   sha256:   d246b8b26ee7ee38e8cd12bd7530e60b318dfd45e05260b8d75ea35bdb482a9b
+#   Declares two APIs the DLL Ultra+ ships (git fbebf039) does not implement:
+#   DumpJMAP (added 5fe9328, 2026-08-04) and ModRef:OnUnload (added ba2efd5).
+
+[dependencies]
+
+[build]
+type = "builtin"

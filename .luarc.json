@@ -7,7 +7,11 @@
     ]
   },
   "workspace": {
+    "ignoreDir": [
+      "types"
+    ],
     "library": [
+      "types/ue4ss/src",
       ".lux/5.4/2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260-net@0.1.0-1/src",
       ".lux/5.4/44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad-dkjson@2.11-1/src",
       ".lux/5.4/7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada-luasocket@3.1.0-1/src",
