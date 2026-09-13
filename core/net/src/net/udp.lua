@@ -40,15 +40,24 @@ function UDP:send(data)
     return self.socket:send(data)
 end
 
----Read one datagram without waiting; nil, "timeout" means none is ready.
+---Read one datagram. Without a timeout this never waits: nil, "timeout"
+---means none is ready. With a timeout it blocks up to that many seconds.
+---@param timeout? number Seconds to wait; omit for a nonblocking read.
 ---@return string? data
 ---@return string? error
-function UDP:receive()
+function UDP:receive(timeout)
     if not self.socket then
         return nil, "closed"
     end
+    if timeout then
+        self.socket:settimeout(timeout)
+    end
     -- Accept any IPv4 UDP payload without silently truncating it.
-    return self.socket:receive(65507)
+    local data, err = self.socket:receive(65507)
+    if timeout then
+        self.socket:settimeout(0)
+    end
+    return data, err
 end
 
 function UDP:close()

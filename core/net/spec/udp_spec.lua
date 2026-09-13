@@ -1,20 +1,6 @@
 local socket = require("socket")
 local UDP = require("net.udp")
 
--- Poll the nonblocking client until a datagram arrives or the deadline passes.
-local function receiveWithin(client, seconds)
-    local deadline = socket.gettime() + seconds
-    repeat
-        local data, err = client:receive()
-        if data then
-            return data
-        end
-        assert.equals("timeout", err)
-        socket.sleep(0.01)
-    until socket.gettime() > deadline
-    return nil, "no response within " .. seconds .. "s"
-end
-
 describe("net.udp", function()
     local server, port
 
@@ -40,7 +26,7 @@ describe("net.udp", function()
         assert.equals("ping", request)
         assert(server:sendto("pong", ip, clientPort))
 
-        local response = assert(receiveWithin(client, 1))
+        local response = assert(client:receive(1))
         assert.equals("pong", response)
 
         client:close()
@@ -56,6 +42,25 @@ describe("net.udp", function()
         assert.is_nil(data)
         assert.equals("timeout", err)
         assert.is_true(elapsed < 0.1, "receive blocked for " .. elapsed .. "s")
+
+        client:close()
+    end)
+
+    it("waits up to the timeout, then reverts to nonblocking", function()
+        local client = assert(UDP.connect("127.0.0.1", port))
+
+        -- Nothing sent: a bounded wait gives up on time, not instantly.
+        local started = socket.gettime()
+        local data, err = client:receive(0.2)
+        local elapsed = socket.gettime() - started
+        assert.is_nil(data)
+        assert.equals("timeout", err)
+        assert.is_true(elapsed >= 0.15, "gave up after only " .. elapsed .. "s")
+
+        -- A later no-arg receive must be nonblocking again.
+        started = socket.gettime()
+        client:receive()
+        assert.is_true(socket.gettime() - started < 0.1, "timeout leaked into later calls")
 
         client:close()
     end)

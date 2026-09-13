@@ -29,7 +29,7 @@ Server.InstructionType = {
 
 ---Resolve DSX's UDP port from its runtime file, defaulting to 6969.
 ---@return integer
-local function discoverPort()
+function Server.discoverPort()
     local appData = os.getenv("LOCALAPPDATA")
     if appData then
         local file = io.open(appData .. "\\DSX\\DSX_UDP_PortNumber.txt", "r")
@@ -53,7 +53,7 @@ function Server.connect(options)
     options = options or {}
     local transport, err = UDP.connect(
         options.host or "127.0.0.1",
-        options.port or discoverPort()
+        options.port or Server.discoverPort()
     )
     if not transport then
         return nil, err
@@ -61,27 +61,48 @@ function Server.connect(options)
     return setmetatable({ transport = transport }, Server)
 end
 
----Send an ordered instruction array in one JSON datagram.
+---Send an ordered instruction array in one JSON datagram. An empty list is
+---refused: DSX never answers `{"instructions":[]}`, so a later read would
+---wait for a reply that never arrives.
 ---@param instructions DSXInstruction[]
 ---@return number? success
 ---@return string? error
 function Server:send(instructions)
+    if #instructions == 0 then
+        return nil, "no instructions to send"
+    end
     return self.transport:send(json.encode({ instructions = instructions }))
 end
 
----@return number? success
+---Ask DSX which controllers are connected and read its reply. Replies to
+---earlier sends are discarded first, so the reply belongs to this request.
+---Without a timeout the reply is checked once, immediately; poll `receive()`
+---on later ticks. With a timeout it blocks up to that many seconds, so only
+---pass one off the game thread.
+---@param timeout? number Seconds to wait; omit for a nonblocking check.
+---@return table? status
 ---@return string? error
-function Server:requestStatus()
-    return self:send({
+function Server:requestStatus(timeout)
+    repeat
+        local stale = self.transport:receive()
+    until not stale
+    local sent, err = self:send({
         { type = Server.InstructionType.GetDSXStatus, parameters = {} },
     })
+    if not sent then
+        return nil, err
+    end
+    return self:receive(timeout)
 end
 
----Poll one decoded DSX response. No response yet returns nil, "timeout".
+---Read one decoded DSX response. Without a timeout this never waits:
+---nil, "timeout" means none is ready. With a timeout it blocks up to that
+---many seconds, so only pass one off the game thread.
+---@param timeout? number Seconds to wait; omit for a nonblocking read.
 ---@return table? response
 ---@return string? error
-function Server:receive()
-    local data, err = self.transport:receive()
+function Server:receive(timeout)
+    local data, err = self.transport:receive(timeout)
     if not data then
         return nil, err
     end

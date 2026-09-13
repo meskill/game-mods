@@ -64,6 +64,20 @@ AdaptiveTrigger.CustomMode = {
     VibratePulseAB = 16,
 }
 
+---Index of the first device in a GetDSXStatus response that supports
+---adaptive triggers. Pure: callers decide how to wait for the response.
+---@param status table A decoded status response.
+---@return integer? index
+---@return string? error
+function AdaptiveTrigger.findController(status)
+    for _, device in ipairs(status.Devices or {}) do
+        if device.IsSupportAT then
+            return device.Index
+        end
+    end
+    return nil, "no connected controller supports adaptive triggers"
+end
+
 ---Bind a controller to an existing server; does not own or open its socket.
 ---@param server DSXServer
 ---@param controllerIndex integer Use a status response's Devices[].Index.

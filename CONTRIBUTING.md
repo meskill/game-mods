@@ -16,6 +16,7 @@ winget install Microsoft.VisualStudio.BuildTools --override "--wait --passive --
 
 ## Development
 
+
 1. _Windows_: Every time you need to update dependencies or build the package, before doing this:
 
 ```sh
@@ -23,3 +24,8 @@ dev.cmd
 ```
 
 This will create a new shell in the proper environment with the required build tools available for installing packages and building native modules.
+
+
+### Lua
+
+Use lux to manage dependencies and verify the lua scripts. To add dependency use `lx add <package>` command. To check the script use `lx check --path <path_to_package>`. To run tests use `lx test -p <package>`.
