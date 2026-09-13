@@ -1,0 +1,45 @@
+---@meta
+
+---@class UABP_TransfigurationPlaceDown_C : UAnimInstance
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field AnimGraphNode_Root FAnimNode_Root
+---@field AnimGraphNode_TransitionResult_7 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_6 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_5 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_4 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_3 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_2 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult_1 FAnimNode_TransitionResult
+---@field AnimGraphNode_TransitionResult FAnimNode_TransitionResult
+---@field AnimGraphNode_SequencePlayer_5 FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult_5 FAnimNode_StateResult
+---@field AnimGraphNode_SequencePlayer_4 FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult_4 FAnimNode_StateResult
+---@field AnimGraphNode_SequencePlayer_3 FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult_3 FAnimNode_StateResult
+---@field AnimGraphNode_SequencePlayer_2 FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult_2 FAnimNode_StateResult
+---@field AnimGraphNode_SequencePlayer_1 FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult_1 FAnimNode_StateResult
+---@field AnimGraphNode_SequencePlayer FAnimNode_SequencePlayer
+---@field AnimGraphNode_StateResult FAnimNode_StateResult
+---@field AnimGraphNode_StateMachine FAnimNode_StateMachine
+---@field PlacementAnimator ABP_TransfigurationPreviewPlacementAnimator_C
+---@field SelectedAnim int32
+---@field PlaceDownComplete boolean
+local UABP_TransfigurationPlaceDown_C = {}
+
+---@param AnimGraph FPoseLink
+function UABP_TransfigurationPlaceDown_C:AnimGraph(AnimGraph) end
+function UABP_TransfigurationPlaceDown_C:EvaluateGraphExposedInputs_ExecuteUbergraph_ABP_TransfigurationPlaceDown_AnimGraphNode_TransitionResult_4120AD794D27CE49AF1F02B0A930B772() end
+function UABP_TransfigurationPlaceDown_C:EvaluateGraphExposedInputs_ExecuteUbergraph_ABP_TransfigurationPlaceDown_AnimGraphNode_TransitionResult_051B8CFF45064601BFF0468A2B3AF2CB() end
+function UABP_TransfigurationPlaceDown_C:EvaluateGraphExposedInputs_ExecuteUbergraph_ABP_TransfigurationPlaceDown_AnimGraphNode_TransitionResult_710B6E30478BC906DAC337AF37347A01() end
+function UABP_TransfigurationPlaceDown_C:EvaluateGraphExposedInputs_ExecuteUbergraph_ABP_TransfigurationPlaceDown_AnimGraphNode_TransitionResult_330310B7402253D0DF9F099347ED1411() end
+function UABP_TransfigurationPlaceDown_C:AnimNotify_PlacementImpact() end
+---@param DeltaTimeX float
+function UABP_TransfigurationPlaceDown_C:BlueprintUpdateAnimation(DeltaTimeX) end
+function UABP_TransfigurationPlaceDown_C:AnimNotify_PlaceDownFinished() end
+---@param EntryPoint int32
+function UABP_TransfigurationPlaceDown_C:ExecuteUbergraph_ABP_TransfigurationPlaceDown(EntryPoint) end
+
+

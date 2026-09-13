@@ -1,0 +1,9 @@
+---@enum ESignificanceBiasEnum
+local ESignificanceBiasEnum = {
+    SIGNIFICANCE_BIAS_LOW = 0,
+    SIGNIFICANCE_BIAS_DEFAULT = 1,
+    SIGNIFICANCE_BIAS_HIGH = 2,
+    SIGNIFICANCE_BIAS_CRITICAL = 3,
+    SIGNIFICANCE_BIAS_MAX = 4,
+}
+

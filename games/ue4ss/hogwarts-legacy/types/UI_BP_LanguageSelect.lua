@@ -1,0 +1,69 @@
+---@meta
+
+---@class UUI_BP_LanguageSelect_C : USettingsTabWidget
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field showDetails UWidgetAnimation
+---@field LB_Arabic UUI_BP_MenuTextButton_C
+---@field LB_Chinese UUI_BP_MenuTextButton_C
+---@field LB_Chinese_Simp UUI_BP_MenuTextButton_C
+---@field LB_English UUI_BP_MenuTextButton_C
+---@field LB_French UUI_BP_MenuTextButton_C
+---@field LB_German UUI_BP_MenuTextButton_C
+---@field LB_Italian UUI_BP_MenuTextButton_C
+---@field LB_Japanese UUI_BP_MenuTextButton_C
+---@field LB_Korean UUI_BP_MenuTextButton_C
+---@field LB_Polish UUI_BP_MenuTextButton_C
+---@field LB_Portuguese UUI_BP_MenuTextButton_C
+---@field LB_Russian UUI_BP_MenuTextButton_C
+---@field LB_Spanish UUI_BP_MenuTextButton_C
+---@field LB_Spanish_LA UUI_BP_MenuTextButton_C
+---@field Legend UUI_BP_Legend_Horizontal_Screen_C
+---@field LanguageButtonArray TArray<UUI_BP_MenuTextButton_C>
+---@field LanguageButtonMap TMap<UUI_BP_MenuTextButton_C, FString>
+---@field LanguageMap TMap<FString, UUI_BP_MenuTextButton_C>
+---@field currentLanguageButton UUI_BP_MenuTextButton_C
+---@field LanguageSelected FUI_BP_LanguageSelect_CLanguageSelected
+local UUI_BP_LanguageSelect_C = {}
+
+---@param RenderSize FVector2D
+function UUI_BP_LanguageSelect_C:GetAsyncWrapperRenderSize(RenderSize) end
+---@param SelectedButton UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:SetOSTLanguage(SelectedButton) end
+function UUI_BP_LanguageSelect_C:InEditorPostConstruct() end
+---@param Parent UUserWidget
+function UUI_BP_LanguageSelect_C:SetParent(Parent) end
+function UUI_BP_LanguageSelect_C:Initialize() end
+function UUI_BP_LanguageSelect_C:Construct() end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Arabic_K2Node_ComponentBoundEvent_0_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Chinese_K2Node_ComponentBoundEvent_1_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Chinese_Simp_K2Node_ComponentBoundEvent_2_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_English_K2Node_ComponentBoundEvent_3_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_French_K2Node_ComponentBoundEvent_4_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_German_K2Node_ComponentBoundEvent_5_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Italian_K2Node_ComponentBoundEvent_6_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Japanese_K2Node_ComponentBoundEvent_7_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Korean_K2Node_ComponentBoundEvent_8_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Polish_K2Node_ComponentBoundEvent_9_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Portuguese_K2Node_ComponentBoundEvent_10_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Russian_K2Node_ComponentBoundEvent_11_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Spanish_K2Node_ComponentBoundEvent_12_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param Button UUI_BP_MenuTextButton_C
+function UUI_BP_LanguageSelect_C:BndEvt__UI_BP_LanguageSelect_LB_Spanish_LA_K2Node_ComponentBoundEvent_13_MenuTextButtonClicked__DelegateSignature(Button) end
+---@param EntryPoint int32
+function UUI_BP_LanguageSelect_C:ExecuteUbergraph_UI_BP_LanguageSelect(EntryPoint) end
+function UUI_BP_LanguageSelect_C:LanguageSelected__DelegateSignature() end
+
+

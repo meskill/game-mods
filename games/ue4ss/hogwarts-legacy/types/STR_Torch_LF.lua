@@ -1,0 +1,13 @@
+---@meta
+
+---@class FSTR_Torch_LF
+---@field UseCustomTexture_20_E4C8FF6640CD9D1233F15188936F367B boolean
+---@field CusomTexture_21_92F5A8A34887AC90D6FC9692DB7FE271 UTexture2D
+---@field UseCustomRotation_18_DE29E6D9412FFE0BBCEC1F96083E2E19 boolean
+---@field CustomRotation_19_353015E2441EBE4CDBE6C186B3D192CF FRotator
+---@field CastShadow_24_0E95C2374FF381011BD5089E490310E9 boolean
+---@field MInShadow_26_563F690E441D46B32A087C8FAB3C5F30 float
+local FSTR_Torch_LF = {}
+
+
+

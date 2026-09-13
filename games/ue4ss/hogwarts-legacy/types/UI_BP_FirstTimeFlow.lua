@@ -1,0 +1,79 @@
+---@meta
+
+---@class UUI_BP_FirstTimeFlow_C : UScreen
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field EndFlow UWidgetAnimation
+---@field fadeInClouds UWidgetAnimation
+---@field FadeOutBG UWidgetAnimation
+---@field BlackScrimFade UWidgetAnimation
+---@field Done UWidgetAnimation
+---@field FadeIn UWidgetAnimation
+---@field FadeOut UWidgetAnimation
+---@field Autosave UCanvasPanel
+---@field AutosaveDisclaimer UUI_BP_AutosaveDisclaimer_C
+---@field backgroundBlackScreen UPhoenixImage
+---@field benchmark UCanvasPanel
+---@field BlackOverlay UImage
+---@field EULApanel UCanvasPanel
+---@field LanguageSelectScreen UUI_BP_LanguageSelect_C
+---@field NextGenPerformance UUI_BP_NextGenPerf_C
+---@field Switcher UWidgetSwitcher
+---@field switcherBorder UBorder
+---@field UI_BP_Benchmark UUI_BP_Benchmark_C
+---@field UI_BP_EULA UUI_BP_EULA_C
+---@field UI_BP_FirstFlowAccessibility UUI_BP_FirstFlowAccessibility_C
+---@field UI_BP_FirstPlayCalibration UUI_BP_FirstPlayCalibration_C
+---@field UI_BP_FullBackgroundSmoke UUI_BP_FullBackgroundSmoke_C
+---@field UI_BP_LogoAndLegal UUI_BP_LogoAndLegal_C
+---@field UI_BP_PSO_FS UUI_BP_PSO_FS_C
+---@field WBSignIn UUI_BP_WbGamesSignin_C
+---@field WBSignInPanel UCanvasPanel
+---@field DisplayDuration float
+---@field SequenceComplete FUI_BP_FirstTimeFlow_CSequenceComplete
+---@field houseIndex int32
+---@field BenchmarkDuration float
+---@field BenchmarkStart float
+---@field HDRActorNeedsHide boolean
+---@field HDRActorShowing boolean
+---@field CloudsShowing boolean
+local UUI_BP_FirstTimeFlow_C = {}
+
+---@param bHideLegalScreen boolean
+function UUI_BP_FirstTimeFlow_C:ShouldSkipLegalScreen(bHideLegalScreen) end
+function UUI_BP_FirstTimeFlow_C:RemoveUnusedScreens() end
+function UUI_BP_FirstTimeFlow_C:DisplayWidget() end
+function UUI_BP_FirstTimeFlow_C:AdjustForViewportWidth() end
+---@param ShouldSkip boolean
+function UUI_BP_FirstTimeFlow_C:ShouldSkipPSO(ShouldSkip) end
+function UUI_BP_FirstTimeFlow_C:ConditionallyHandleEULA() end
+function UUI_BP_FirstTimeFlow_C:ConditionallyHandleFirstFlowAccessibility() end
+---@param IsShowing boolean
+function UUI_BP_FirstTimeFlow_C:ConditionallyHandleHDRScreen(IsShowing) end
+---@param bSuccess boolean
+function UUI_BP_FirstTimeFlow_C:SwitchToNextWidget(bSuccess) end
+function UUI_BP_FirstTimeFlow_C:TriggerNext() end
+function UUI_BP_FirstTimeFlow_C:WidgetAnimationEvt_Done_K2Node_WidgetAnimationEvent_2() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_EULA_K2Node_ComponentBoundEvent_0_EulaAccepted__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_FirstPlayCalibration_K2Node_ComponentBoundEvent_1_BrightnessAccepted__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_WBSignIn_K2Node_ComponentBoundEvent_2_WBSignInContinue__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_Benchmark_K2Node_ComponentBoundEvent_3_BenchmarkAccepted__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:WidgetAnimationEvt_FadeIn_K2Node_WidgetAnimationEvent_1() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_PSO_FS_K2Node_ComponentBoundEvent_4_PSOComplete__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:WidgetAnimationEvt_FadeOutBG_K2Node_WidgetAnimationEvent_3() end
+---@param IsShown boolean
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_Benchmark_K2Node_ComponentBoundEvent_5_OnHDRScreenToggled__DelegateSignature(IsShown) end
+function UUI_BP_FirstTimeFlow_C:WidgetAnimationEvt_FadeOut_K2Node_WidgetAnimationEvent_0() end
+---@param WantsCursor boolean
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_Benchmark_K2Node_ComponentBoundEvent_6_DesiredCursorStateChanged__DelegateSignature(WantsCursor) end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_FirstFlowAccessibility_K2Node_ComponentBoundEvent_7_ChangesComplete__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_FirstPlayCalibration_K2Node_ComponentBoundEvent_8_HDRBrightnessAccepted__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:Construct() end
+---@param WantsToShowCursor boolean
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_UI_BP_FirstFlowAccessibility_K2Node_ComponentBoundEvent_9_CursorChangeRequested__DelegateSignature(WantsToShowCursor) end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_LanguageSelectScreen_K2Node_ComponentBoundEvent_10_LanguageSelected__DelegateSignature() end
+function UUI_BP_FirstTimeFlow_C:BndEvt__UI_BP_FirstTimeFlow_NextGenPerformance_K2Node_ComponentBoundEvent_11_PerfScreenDismissed__DelegateSignature() end
+---@param EntryPoint int32
+function UUI_BP_FirstTimeFlow_C:ExecuteUbergraph_UI_BP_FirstTimeFlow(EntryPoint) end
+function UUI_BP_FirstTimeFlow_C:SequenceComplete__DelegateSignature() end
+
+

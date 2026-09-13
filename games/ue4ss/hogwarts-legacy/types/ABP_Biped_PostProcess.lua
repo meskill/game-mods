@@ -1,0 +1,89 @@
+---@meta
+
+---@class UABP_Biped_PostProcess_C : UAnimInstance
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field AnimGraphNode_BoneDrivenController_63 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_62 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_61 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_LocalToComponentSpace FAnimNode_ConvertLocalToComponentSpace
+---@field AnimGraphNode_BoneDrivenController_60 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_AnimDynamics_7 FAnimNode_AnimDynamics
+---@field AnimGraphNode_BoneDrivenController_59 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_58 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_ComponentToLocalSpace FAnimNode_ConvertComponentToLocalSpace
+---@field AnimGraphNode_BoneDrivenController_57 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_56 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_55 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_54 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_53 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_52 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_51 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_50 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_49 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_48 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_47 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_46 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_45 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_44 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_43 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_42 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_41 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_40 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_39 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_38 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_37 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_36 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_35 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_AnimDynamics_6 FAnimNode_AnimDynamics
+---@field AnimGraphNode_AnimDynamics_5 FAnimNode_AnimDynamics
+---@field AnimGraphNode_AnimDynamics_4 FAnimNode_AnimDynamics
+---@field AnimGraphNode_AnimDynamics_3 FAnimNode_AnimDynamics
+---@field AnimGraphNode_BoneDrivenController_34 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_33 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_32 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_31 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_30 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_29 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_28 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_27 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_26 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_25 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_24 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_23 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_AnimDynamics_2 FAnimNode_AnimDynamics
+---@field AnimGraphNode_BoneDrivenController_22 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_21 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_SubInput FAnimNode_LinkedInputPose
+---@field AnimGraphNode_BoneDrivenController_20 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_19 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_18 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_17 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_16 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_15 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_14 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_13 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_12 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_11 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_AnimDynamics_1 FAnimNode_AnimDynamics
+---@field AnimGraphNode_AnimDynamics FAnimNode_AnimDynamics
+---@field AnimGraphNode_BoneDrivenController_10 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_9 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_Root FAnimNode_Root
+---@field AnimGraphNode_BoneDrivenController_8 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_7 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_6 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_5 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_4 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_3 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_2 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController_1 FAnimNode_BoneDrivenController
+---@field AnimGraphNode_BoneDrivenController FAnimNode_BoneDrivenController
+local UABP_Biped_PostProcess_C = {}
+
+---@param InPose FPoseLink
+---@param AnimGraph FPoseLink
+function UABP_Biped_PostProcess_C:AnimGraph(InPose, AnimGraph) end
+---@param EntryPoint int32
+function UABP_Biped_PostProcess_C:ExecuteUbergraph_ABP_Biped_PostProcess(EntryPoint) end
+
+

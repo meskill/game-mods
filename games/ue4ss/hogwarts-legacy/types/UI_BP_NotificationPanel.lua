@@ -1,0 +1,35 @@
+---@meta
+
+---@class UUI_BP_NotificationPanel_C : UNotificationPanelWidget
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field ChallengeNotification UUI_BP_ChallengeNotification_C
+---@field CollectionNotification UUI_BP_CollectionNotification_C
+---@field MoneyNotification UUI_BP_MoneyNotification_C
+local UUI_BP_NotificationPanel_C = {}
+
+---@param ItemData FPickupNotificationData
+function UUI_BP_NotificationPanel_C:AddPickupNotification(ItemData) end
+---@param ItemData FChallengeNotificationData
+function UUI_BP_NotificationPanel_C:AddChallengeCompleteNotification(ItemData) end
+---@param ItemData FCollectionNotificationData
+function UUI_BP_NotificationPanel_C:AddCollectionKnownNotification(ItemData) end
+---@param ItemData FCollectionNotificationData
+function UUI_BP_NotificationPanel_C:AddCollectionObtainedNotification(ItemData) end
+---@param ItemData FChallengeNotificationData
+function UUI_BP_NotificationPanel_C:AddChallengeUpdatedNotification(ItemData) end
+---@param ItemData FChallengeNotificationData
+function UUI_BP_NotificationPanel_C:IncrementCurrentChallengeUpdate(ItemData) end
+---@param Item UUI_BP_NotificationItem_C
+function UUI_BP_NotificationPanel_C:PickupNotificationComplete(Item) end
+function UUI_BP_NotificationPanel_C:OnInitialized() end
+---@param ItemData FPickupNotificationData
+function UUI_BP_NotificationPanel_C:AddMoneyNotification(ItemData) end
+function UUI_BP_NotificationPanel_C:BndEvt__UI_BP_NotificationPanel_MoneyNotification_K2Node_ComponentBoundEvent_0_NotificationComplete__DelegateSignature() end
+function UUI_BP_NotificationPanel_C:BndEvt__UI_BP_NotificationPanel_MoneyNotification_K2Node_ComponentBoundEvent_1_AnimatingOut__DelegateSignature() end
+---@param Amount int32
+function UUI_BP_NotificationPanel_C:IncrementCurrentMoneyNotification(Amount) end
+function UUI_BP_NotificationPanel_C:BndEvt__UI_BP_NotificationPanel_ChallengeNotification_K2Node_ComponentBoundEvent_2_OutAnimationStarted__DelegateSignature() end
+---@param EntryPoint int32
+function UUI_BP_NotificationPanel_C:ExecuteUbergraph_UI_BP_NotificationPanel(EntryPoint) end
+
+

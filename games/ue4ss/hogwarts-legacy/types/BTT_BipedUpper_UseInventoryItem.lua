@@ -1,0 +1,56 @@
+---@meta
+
+---@class UBTT_BipedUpper_UseInventoryItem_C : UBTTask_AvaAITree_Input
+---@field UberGraphFrame FPointerToUberGraphFrame
+---@field PotionName FString
+---@field SpawnInvItemState EBTCustomActionType::Type
+---@field ItemUsageEndedHandle FHermesBPDelegateHandle
+---@field InventoryItemTool AInventoryItemTool
+---@field ContextsSet boolean
+---@field RiderHandIKDisabled boolean
+local UBTT_BipedUpper_UseInventoryItem_C = {}
+
+---@param InActor AActor
+function UBTT_BipedUpper_UseInventoryItem_C:RestoreMountRiderHandIK(InActor) end
+---@param InActor AActor
+function UBTT_BipedUpper_UseInventoryItem_C:OptionalDisableMountRiderHandIK(InActor) end
+---@param Flag boolean
+function UBTT_BipedUpper_UseInventoryItem_C:SetContexts(Flag) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_AnimCompletePartial_K2Node_BTCustomActionEvent_11(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_ConsumeInventoryItem_K2Node_BTCustomActionEvent_10(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_SpawnInventoryItem_K2Node_BTCustomActionEvent_9(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_SpawnInventoryItem_K2Node_BTCustomActionEvent_8(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_SpawnInventoryItem_K2Node_BTCustomActionEvent_7(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_UseInventoryItem_K2Node_BTCustomActionEvent_6(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_UseInventoryItem_K2Node_BTCustomActionEvent_5(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_BeastCapture_K2Node_BTCustomActionEvent_4(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_BeastCapture_K2Node_BTCustomActionEvent_3(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_InventoryItemEvent_K2Node_BTCustomActionEvent_2(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:InpActEvt_CaptureDevice_ConfirmCapture_K2Node_CustomInputActionEvent_1(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:InpActEvt_CaptureDevice_CancelCapture_K2Node_CustomInputActionEvent_0(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_InventoryItemCharged_K2Node_BTCustomActionEvent_1(VariantMapHandle) end
+---@param VariantMapHandle FVariantMapHandle
+function UBTT_BipedUpper_UseInventoryItem_C:CustActionEvt_DrinkPotion_K2Node_BTCustomActionEvent_0(VariantMapHandle) end
+---@param OwnerActor AActor
+function UBTT_BipedUpper_UseInventoryItem_C:ExitTask(OwnerActor) end
+---@param Caller UObject
+function UBTT_BipedUpper_UseInventoryItem_C:ItemUsageEnded(Caller) end
+---@param OwnerActor AActor
+function UBTT_BipedUpper_UseInventoryItem_C:ReceiveExecute(OwnerActor) end
+---@param EntryPoint int32
+function UBTT_BipedUpper_UseInventoryItem_C:ExecuteUbergraph_BTT_BipedUpper_UseInventoryItem(EntryPoint) end
+
+

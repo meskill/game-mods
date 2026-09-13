@@ -1,0 +1,18 @@
+---@meta
+
+---@class FSTR_CustomWandStyleDefinition
+---@field SoftMesh_27_8D8EB96E4FC105BB40ED66BD8E5109EE TSoftObjectPtr<USkeletalMesh>
+---@field BaseOption_50_78EFD28F46416C5C5C75559F9DA73FBF boolean
+---@field Subgroup_33_67BE5FB047644FAAD247BD84AD5BC3B0 FString
+---@field HandleName_54_B3C7A39143E46DBD491A5F81976C913D FString
+---@field Tip_D_37_89F1EE8240019CE45E2417816FA0D99E TSoftObjectPtr<UTexture>
+---@field Tip_N_39_4E0988D64374C638DED8C39D3FA4C919 TSoftObjectPtr<UTexture>
+---@field Tip_MRO_44_EAB7DF7D46521D2879AAA4B05DC3F10C TSoftObjectPtr<UTexture>
+---@field Handle_D_45_16F7A516446F36DE2C85B19CA47408F8 TSoftObjectPtr<UTexture>
+---@field Handle_N_46_0A7775004A519C7DC9D81BB1E65F92D3 TSoftObjectPtr<UTexture>
+---@field Handle_MRO_48_A443128241B4C0D32EC07DAEEC63765C TSoftObjectPtr<UTexture>
+---@field Show_24_AAA654FB452A518DFD4FDC944FCFC7DD boolean
+local FSTR_CustomWandStyleDefinition = {}
+
+
+
