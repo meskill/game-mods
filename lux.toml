@@ -11,7 +11,11 @@ labels = [ "game" ]
 members = [
     "glob:core/*",
     "glob:backends/*",
-    "glob:games/ue4ss/*",
+    # games/ue4ss/ue4ss is vendored UE4SS code, deliberately not a member: `lx check`
+    # type checks every member and lux honours no ignore setting, so membership is the
+    # only way to keep third-party sources out of the report. It is still consumed
+    # through `workspace.library` in .luarc.json.
+    "games/ue4ss/hogwarts-legacy",
 ]
 
 # [source]

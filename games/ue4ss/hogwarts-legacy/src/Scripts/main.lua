@@ -2,6 +2,7 @@ local UEHelpers = require("UEHelpers")
 
 print("[MyLuaMod] Mod loaded\n")
 
+---@type FVector?
 local lastLocation = nil
 
 function ReadPlayerLocation()
