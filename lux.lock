@@ -44,12 +44,27 @@
           "rockspec": "sha256-mXT3Lir9tgvg8dZCdYkDr5jDB4oeqZ/ykU98z8o46XE=",
           "source": "sha256-hEmKZavviipO+3dTZpHywpvkU/Ka4b0gFXTxrt67zTE="
         }
+      },
+      "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9": {
+        "name": "backends_dsx",
+        "version": "0.1.0-1",
+        "constraint": "==0.1.0",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"backends_dsx\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:\\\\Projects\\\\Dualsense-games\\\\games/ue4ss/hogwarts-legacy\\\\../../../backends/dsx\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source_url": {
+          "type": "file",
+          "path": "D:\\Projects\\Dualsense-games\\games/ue4ss/hogwarts-legacy\\../../../backends/dsx"
+        },
+        "hashes": {
+          "rockspec": "sha256-MNqyZGueY9tSZZuOYAomLFM1FnC2INVFsJT4Wsl2Emg=",
+          "source": "sha256-uwsi8aEUqjFotLTP+g6E8SewJk0J8zSlgJ1+x2QG5Ig="
+        }
       }
     },
     "entrypoints": [
       "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260",
       "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
-      "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada"
+      "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada",
+      "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9"
     ]
   },
   "test_dependencies": {

@@ -14,4 +14,23 @@ lua = "5.4"
 #   Dumper:  UE4SS v3.0.1 Beta #0, Git SHA #fbebf039 (bundled by Ultra+ 13.3.4)
 #   Dumped:  2026-09-12; 1596 files, 16411 class declarations
 
+[dependencies.backends_dsx]
+path = "../../../backends/dsx"
+version = "0.1.0"
+
+# Transitive dependencies required by Lux dist.
 [dependencies]
+dkjson = "==2.11"
+luasocket = "==3.1.0"
+
+
+[dependencies.net]
+path = "../../../core/net"
+version = "0.1.0"
+
+[build]
+type = "builtin"
+
+[build.modules]
+main = "src/Scripts/main.lua"
+spells = "src/Scripts/spells.lua"

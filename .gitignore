@@ -4,3 +4,4 @@
 /lua.bat
 /lua_modules
 /.luarocks
+/dist/
