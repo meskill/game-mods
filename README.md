@@ -11,8 +11,8 @@ companion alongside DSX while comparing effects.
 
 During active gameplay R2 follows the wand:
 
-1. **Idle, or R2 clicked** (the basic wand attack): DSX `VerySoft` (legacy mode
-   2, no arguments).
+1. **Idle, or R2 clicked** (the basic wand attack): DSX `GameCube` (legacy mode
+   1, no arguments).
 2. **R2 held** for at least 0.3 s (casting spells): light vibration,
    `VIBRATION` start 3, amplitude 1, 20 Hz.
 3. **Spell fires:** the spell's fire effect below replaces both, from the
@@ -24,6 +24,32 @@ The hold is read from the player controller:
 `APlayerController:GetInputKeyTimeDown` for the `Gamepad_RightTrigger` key.
 Whether the game reports DualSense R2 under that key is not yet verified in
 game; debug mode logs `R2 down|held|up (down <s>)` on every change.
+
+### Broom
+
+While the player rides a broom, both triggers follow the broom instead of the
+wand (spell tracking pauses):
+
+| Trigger | Effect |
+| --- | --- |
+| R2 (speed up) | `Machine` start 1, end 9, strength A 1, strength B 0, frequency 1, period 6 |
+| L2 (nitro) | `Machine` start 1, end 9, strength A 1, strength B 1, frequency 10, period 6 |
+| L2, nitro used up | Maximum resistance (`FEEDBACK` start 1, strength 8) until the meter refills to 10% |
+
+`backends/dsx/API.md` documents `Machine` period as 0-2; period 6 is sent as
+configured (DSX does not validate it).
+
+The broom is the `AFlyingBroom` whose `MountedCharacter` is the player: either
+the controller's possessed pawn, or found by scanning `FlyingBroom` actors at
+most once per second while `ABiped_Player:GetIsOnAMountOrInTransition()` is
+true, then cached. Every sample also requires the player to still be on a
+mount (or the controller to possess the broom): a broom keeps its
+`MountedCharacter` after the rider drops off it. Nitro counts as used up
+when `GetBoostMeterAmount()` falls to 1% of `GetMaxBoostMeter()` and as
+reloaded once it refills to 10% (`READY_FRACTION` in `broom.lua`). Debug mode logs `broom mounted|dismounted`,
+`broom boost=<b> recharging=<b> meter=<amount>/<max>` on every boost or
+recharge change, and `nitro empty|recharged`. None of these broom reads are
+verified in game yet.
 
 Motion-control fire effects follow this model:
 
@@ -77,7 +103,8 @@ custom DSX presets, not recovered Sony profiles. The local player's wand is
 sampled every 100 ms. Changing the spell or wand cancels a pending fire and
 the current fire effect. Pausing, cinematics, or death turn R2 off and cancel
 the fire effect. Resuming during an unchanged, ongoing cast does not replay
-it. The left trigger is untouched.
+it. Off the broom, the left trigger is untouched until a broom first drives
+it; after that it is switched off whenever the player is not riding.
 
 This is sampled state detection, not a complete cast-event stream. Casts
 shorter than a sample, or back-to-back casts whose stopped gap falls between

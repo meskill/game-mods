@@ -10,8 +10,10 @@ local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
 local getTime = require("socket").gettime
 local Spells = require("spells")
+local Broom = require("broom")
 
 local RIGHT_TRIGGER = AdaptiveTrigger.Trigger.Right
+local LEFT_TRIGGER = AdaptiveTrigger.Trigger.Left
 local POLL_INTERVAL_MS = 100
 -- Logs gameplay, spell-state, and packet decisions.
 ---@type boolean
@@ -26,7 +28,7 @@ end
 -- A click on R2 is the basic wand attack and keeps the baseline; holding R2
 -- (spell casting) switches to the light hold vibration.
 ---@type HogwartsTriggerEffect
-local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.VerySoft, args = {} }
+local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.GameCube, args = {} }
 ---@type HogwartsTriggerEffect
 local HOLD_EFFECT = { mode = AdaptiveTrigger.Mode.VIBRATION, args = { 3, 1, 20 } }
 -- Seconds R2 must stay down before it counts as a hold rather than a click.
@@ -62,6 +64,11 @@ local function activePawn()
     if not controller or not controller:IsValid() then return nil, "no valid controller" end
 
     local pawn = controller.Pawn
+    -- On a broom the controller may possess the broom; its rider is the player.
+    if pawn and pawn:IsValid() and pawn:IsA("/Script/Phoenix.FlyingBroom") then
+        ---@cast pawn AFlyingBroom
+        pawn = pawn.MountedCharacter
+    end
     if not pawn or not pawn:IsValid() or not pawn:IsA("/Script/Phoenix.Biped_Player") then
         return nil, "missing, invalid, or non-player pawn"
     end
@@ -98,10 +105,12 @@ ExecuteAsync(function()
 
     local triggers = AdaptiveTrigger.new(server, index)
     local spells = Spells.tracker(DEBUG and debugLog or nil)
-    ---@type table<HogwartsTriggerEffect, DSXInstruction[]>
-    local packets = {}
-    ---@type HogwartsTriggerEffect?
-    local appliedEffect
+    local broom = Broom.tracker(DEBUG and debugLog or nil)
+    ---@type table<DSXTrigger, table<HogwartsTriggerEffect, DSXInstruction[]>>
+    local packets = { [RIGHT_TRIGGER] = {}, [LEFT_TRIGGER] = {} }
+    -- L2 stays untouched until the broom first drives it.
+    ---@type table<DSXTrigger, HogwartsTriggerEffect?>
+    local appliedEffects = {}
     local updatePending = false
     local stopped = false
     ---@type string?
@@ -111,22 +120,23 @@ ExecuteAsync(function()
     local lastSpellEffect
     local spellEndedAt = -math.huge
 
+    ---@param trigger DSXTrigger
     ---@param effect HogwartsTriggerEffect
     ---@param force? boolean A new cast must refresh even an identical effect.
     ---@return boolean
-    local function applyEffect(effect, force)
+    local function applyEffect(trigger, effect, force)
         if stopped then
             return false
         end
-        if effect == appliedEffect and not force then
+        if effect == appliedEffects[trigger] and not force then
             return true
         end
-        local packet = packets[effect]
+        local packet = packets[trigger][effect]
         if not packet then
-            local instruction = triggers:instruction(RIGHT_TRIGGER, effect.mode)
+            local instruction = triggers:instruction(trigger, effect.mode)
             table.move(effect.args, 1, #effect.args, 4, instruction.parameters)
             packet = { instruction }
-            packets[effect] = packet
+            packets[trigger][effect] = packet
         end
         local sent, sendError = server:send(packet)
         if not sent then
@@ -135,9 +145,10 @@ ExecuteAsync(function()
             stopped = true
             return false
         end
-        appliedEffect = effect
+        appliedEffects[trigger] = effect
         if DEBUG then
-            debugLog("sent R2 mode=" .. effect.mode .. " args={" .. table.concat(effect.args, ",")
+            debugLog("sent " .. (trigger == LEFT_TRIGGER and "L2" or "R2") .. " mode=" .. effect.mode
+                .. " args={" .. table.concat(effect.args, ",")
                 .. "} force=" .. tostring(force == true))
         end
         return true
@@ -167,9 +178,21 @@ ExecuteAsync(function()
         gameplayState = state
         if not pawn or not controller then
             spells:clear()
-            applyEffect(OFF_EFFECT)
+            applyEffect(RIGHT_TRIGGER, OFF_EFFECT)
+            if appliedEffects[LEFT_TRIGGER] then applyEffect(LEFT_TRIGGER, OFF_EFFECT) end
             return
         end
+        local now = getTime()
+        -- On a broom both triggers follow the broom; the wand and spells pause.
+        local broomRight, broomLeft = broom:update(pawn, controller, now)
+        if broomRight and broomLeft then
+            spells:clear()
+            lastSpellEffect = nil
+            applyEffect(RIGHT_TRIGGER, broomRight)
+            applyEffect(LEFT_TRIGGER, broomLeft)
+            return
+        end
+        if appliedEffects[LEFT_TRIGGER] then applyEffect(LEFT_TRIGGER, OFF_EFFECT) end
         local heldFor = controller:GetInputKeyTimeDown(R2_KEY)
         local held = heldFor >= HOLD_DELAY
         local down = heldFor > 0
@@ -178,12 +201,12 @@ ExecuteAsync(function()
                 heldFor))
         end
         triggerHeld, triggerDown = held, down
-        local now = getTime()
         local effect, cast = spells:update(pawn, now)
         if lastSpellEffect and not effect then spellEndedAt = now end
         lastSpellEffect = effect
         local vibrate = held and now >= spellEndedAt + SPELL_END_DELAY
-        if applyEffect(effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT, cast ~= nil) and cast then
+        if applyEffect(RIGHT_TRIGGER, effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT, cast ~= nil)
+            and cast then
             print("[HogwartsDualSense] Spell effect: " .. cast .. "\n")
         end
     end
