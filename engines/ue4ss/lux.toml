@@ -1,0 +1,21 @@
+package = "ue4ss"
+version = "0.1.0"
+lua = "5.4"
+
+[dependencies]
+
+[build]
+type = "builtin"
+
+[test]
+type = "busted"
+
+# Specifies the version of compatible UE4SS API. Used
+# to load types and tested against it.
+[ue4ss]
+repository = "https://github.com/UE4SS-RE/RE-UE4SS"
+# use the dev version for now, since the stable 3.0.1 is outdated
+version = "v3.0.1-812"
+# The last changes to Types.lua before the forking the UE4SS by Ultra+ team.
+# so the package should work both on ultra+ ue4ss version and the official one.
+commit = "382aec7ee6cbace546bb05fbe54e97c4f04b8159"

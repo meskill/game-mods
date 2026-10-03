@@ -5,7 +5,7 @@ lua = "5.4"
 # types/ holds this game's Lua bindings, produced in-game by the UE4SS GUI console
 # (Dumpers -> Dump Lua Bindings, which writes Mods/shared/types) and copied verbatim.
 # They declare the reflected engine and game classes — AActor, UWorld, FVector,
-# APlayerController, the Phoenix-specific ones — that ue4ss/types/Types.lua only
+# APlayerController, the Phoenix-specific ones — that engines/ue4ss/types/Types.lua only
 # references by name. Editor-only: never require them, they would overwrite UE4SS
 # globals. Regenerate after a game patch or a UE4SS update.
 #   Game:    Hogwarts Legacy, Steam app 990080, buildid 20773316
@@ -28,6 +28,10 @@ luasocket = "==3.1.0"
 path = "../../../core/net"
 version = "0.1.0"
 
+[dependencies.ue4ss]
+path = "../../../engines/ue4ss"
+version = "0.1.0"
+
 [build]
 type = "builtin"
 
@@ -35,3 +39,8 @@ type = "builtin"
 main = "src/Scripts/main.lua"
 spells = "src/Scripts/spells.lua"
 broom = "src/Scripts/broom.lua"
+
+[test]
+type = "busted"
+# stub
+flags = [ "--version" ]

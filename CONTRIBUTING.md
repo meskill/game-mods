@@ -29,3 +29,8 @@ This will create a new shell in the proper environment with the required build t
 ### Lua
 
 Use lux to manage dependencies and verify the lua scripts. To add dependency use `lx add <package>` command. To check the scripts use `lx check` (no way to run separately for package for now). To run tests use `lx test -p <package>`.
+
+
+### Nushell
+
+[Nushell](https://www.nushell.sh/) is used for scripting and automation. Use `nu` command to run scripts.

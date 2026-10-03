@@ -5,7 +5,10 @@
 local luaDll = assert(package.searchpath("lua54", package.cpath))
 assert(package.loadlib(luaDll, "*"))
 
-local UEHelpers = require("UEHelpers")
+local Objects = require("ue4ss.objects")
+local Lookup = require("ue4ss.lookup")
+local Loop = require("ue4ss.loop")
+local Log = require("ue4ss.log")
 local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
 local getTime = require("socket").gettime
@@ -19,10 +22,8 @@ local POLL_INTERVAL_MS = 100
 ---@type boolean
 local DEBUG = true
 
----@param message string
-local function debugLog(message)
-    print("[HogwartsDualSense][debug] " .. message .. "\n")
-end
+local log = Log.new("[HogwartsDualSense]")
+local debugLog = Log.new("[HogwartsDualSense][debug]")
 
 -- Wand effects during gameplay; a spell fire effect from spells.lua overrides both.
 -- A click on R2 is the basic wand attack and keeps the baseline; holding R2
@@ -41,27 +42,17 @@ local R2_KEY = { KeyName = FName("Gamepad_RightTrigger") }
 ---@type HogwartsTriggerEffect
 local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 
----@type APlayerController?
-local playerController
----@type number
-local nextControllerLookupAt = 0
+-- Finding the controller scans every PlayerController. Reuse a live one; while
+-- menus or travel have none, search at most once per second.
+local controllers = Lookup.new(1, Objects.playerController)
 
 ---Use the dumped Phoenix player type, not menu or spectator pawns.
 ---@return ABiped_Player? pawn The player pawn while gameplay is active.
 ---@return string state Why gameplay is inactive, or "active".
 ---@return APlayerController? controller The pawn's controller while active.
 local function activePawn()
-    local controller = playerController
-    if not controller or not controller:IsValid() then
-        -- The installed UEHelpers scans all UObjects on every controller lookup.
-        -- Reuse a live controller; bound scans while menus/travel have none.
-        local now = getTime()
-        if now < nextControllerLookupAt then return nil, "controller rediscovery wait" end
-        nextControllerLookupAt = now + 1
-        controller = UEHelpers.GetPlayerController()
-        playerController = controller
-    end
-    if not controller or not controller:IsValid() then return nil, "no valid controller" end
+    local controller = controllers:get(getTime()) --[[@as APlayerController?]]
+    if not controller then return nil, "no valid controller" end
 
     local pawn = controller.Pawn
     -- On a broom the controller may possess the broom; its rider is the player.
@@ -74,8 +65,8 @@ local function activePawn()
     end
     ---@cast pawn ABiped_Player
 
-    local gameplay = UEHelpers.GetGameplayStatics()
-    if not gameplay:IsValid() then return nil, "no gameplay statics" end
+    local gameplay = Objects.gameplayStatics()
+    if not gameplay then return nil, "no gameplay statics" end
     if gameplay:IsGamePaused(controller) then return nil, "paused" end
     if pawn.InCinematic then return nil, "cinematic" end
     if pawn:IsDead() then return nil, "dead" end
@@ -86,7 +77,7 @@ end
 ExecuteAsync(function()
     local server, err = Server.connect()
     if not server then
-        print("[HogwartsDualSense] Could not open DSX socket: " .. tostring(err) .. "\n")
+        log("Could not open DSX socket: " .. tostring(err))
         return
     end
 
@@ -97,8 +88,8 @@ ExecuteAsync(function()
         index, err = AdaptiveTrigger.findController(status)
     end
     if not index then
-        print("[HogwartsDualSense] DSX discovery failed: " .. tostring(err)
-            .. ". Enable DSX UDP and connect a DualSense, then restart the mod.\n")
+        log("DSX discovery failed: " .. tostring(err)
+            .. ". Enable DSX UDP and connect a DualSense, then restart the mod.")
         server:close()
         return
     end
@@ -111,7 +102,6 @@ ExecuteAsync(function()
     -- L2 stays untouched until the broom first drives it.
     ---@type table<DSXTrigger, HogwartsTriggerEffect?>
     local appliedEffects = {}
-    local updatePending = false
     local stopped = false
     ---@type string?
     local gameplayState
@@ -140,7 +130,7 @@ ExecuteAsync(function()
         end
         local sent, sendError = server:send(packet)
         if not sent then
-            print("[HogwartsDualSense] DSX send failed: " .. tostring(sendError) .. "\n")
+            log("DSX send failed: " .. tostring(sendError))
             server:close()
             stopped = true
             return false
@@ -207,32 +197,14 @@ ExecuteAsync(function()
         local vibrate = held and now >= spellEndedAt + SPELL_END_DELAY
         if applyEffect(RIGHT_TRIGGER, effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT, cast ~= nil)
             and cast then
-            print("[HogwartsDualSense] Spell effect: " .. cast .. "\n")
+            log("Spell effect: " .. cast)
         end
     end
 
-    ---@type string?
-    local lastUpdateError
+    Loop.gameThread(POLL_INTERVAL_MS, function()
+        if not stopped then update() end
+        return stopped
+    end, function(message) log("Update failed: " .. message) end)
 
-    LoopAsync(POLL_INTERVAL_MS, function()
-        if stopped then
-            return true
-        end
-        -- A stalled game thread must not accumulate queued updates.
-        if not updatePending then
-            updatePending = true
-            ExecuteInGameThread(function()
-                -- An error must not leave updatePending set and stall polling forever.
-                local ok, updateError = pcall(update)
-                if not ok and tostring(updateError) ~= lastUpdateError then
-                    lastUpdateError = tostring(updateError)
-                    print("[HogwartsDualSense] Update failed: " .. lastUpdateError .. "\n")
-                end
-                updatePending = false
-            end)
-        end
-        return false
-    end)
-
-    print("[HogwartsDualSense] Local wand spell polling ready for controller " .. index .. "\n")
+    log("Local wand spell polling ready for controller " .. index)
 end)

@@ -1,4 +1,5 @@
 local AdaptiveTrigger = require("adaptive_triggers")
+local Lookup = require("ue4ss.lookup")
 
 local Mode = AdaptiveTrigger.Mode
 
@@ -26,23 +27,13 @@ local READY_FRACTION = 0.1
 ---Tracks the broom the local player rides and its nitro meter.
 ---@class HogwartsBroomTracker
 ---@field private broom? AFlyingBroom
----@field private nextLookupAt number
+---@field private brooms UE4SSLookup
 ---@field private empty boolean Nitro ran out and has not fully recharged.
 ---@field private boosting boolean
 ---@field private recharging boolean
 ---@field private log? fun(message: string)
 local Tracker = {}
 Tracker.__index = Tracker
-
-local Broom = {}
-
----@param log? fun(message: string) Receives mount, nitro, and lookup transitions.
----@return HogwartsBroomTracker
-function Broom.tracker(log)
-    return setmetatable({
-        nextLookupAt = 0, empty = false, boosting = false, recharging = false, log = log,
-    }, Tracker)
-end
 
 ---@param broom AFlyingBroom?
 ---@param riderAddress integer
@@ -51,6 +42,28 @@ local function riddenBy(broom, riderAddress)
     if not broom or not broom:IsValid() then return false end
     local rider = broom.MountedCharacter
     return rider ~= nil and rider:IsValid() and rider:GetAddress() == riderAddress
+end
+
+---Scans every broom for the one the rider is mounted on.
+---@param riderAddress integer
+---@return AFlyingBroom?
+local function findRiddenBroom(riderAddress)
+    for _, candidate in ipairs(FindAllOf("FlyingBroom") or {}) do
+        ---@cast candidate AFlyingBroom
+        if riddenBy(candidate, riderAddress) then return candidate end
+    end
+    return nil
+end
+
+local Broom = {}
+
+---@param log? fun(message: string) Receives mount, nitro, and lookup transitions.
+---@return HogwartsBroomTracker
+function Broom.tracker(log)
+    return setmetatable({
+        brooms = Lookup.new(LOOKUP_INTERVAL, findRiddenBroom, riddenBy),
+        empty = false, boosting = false, recharging = false, log = log,
+    }, Tracker)
 end
 
 ---The broom the player rides. The controller may possess the broom itself;
@@ -69,22 +82,12 @@ function Tracker:find(pawn, controller, now)
 
     ---@type AFlyingBroom?
     local broom
-    if onBroomPawn or pawn:GetIsOnAMountOrInTransition() then
-        if riddenBy(self.broom, address) then return self.broom end
-        if onBroomPawn then
-            ---@cast possessed AFlyingBroom
-            if riddenBy(possessed, address) then broom = possessed end
-        end
-        if not broom and now >= self.nextLookupAt then
-            self.nextLookupAt = now + LOOKUP_INTERVAL
-            for _, candidate in ipairs(FindAllOf("FlyingBroom") or {}) do
-                ---@cast candidate AFlyingBroom
-                if riddenBy(candidate, address) then
-                    broom = candidate
-                    break
-                end
-            end
-        end
+    if onBroomPawn and riddenBy(possessed --[[@as AFlyingBroom]], address) then
+        broom = self.brooms:set(possessed --[[@as AFlyingBroom]])
+    elseif onBroomPawn or pawn:GetIsOnAMountOrInTransition() then
+        broom = self.brooms:get(now, address) --[[@as AFlyingBroom?]]
+    else
+        self.brooms:clear()
     end
 
     if self.log and (broom ~= nil) ~= (self.broom ~= nil) then
