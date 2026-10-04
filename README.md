@@ -74,27 +74,31 @@ strength 3).
 The fire moment is sampled, not hooked. In-game logs show a cast as
 `IsStopped()` false while held, `IsStarted_K2()` true briefly when it fires
 (caught in one of eleven casts at 100 ms sampling), then `IsStopped()` true.
-The mod therefore treats a held cast as fired on the first of: `IsStarted_K2()`
+Cast detection lives in the shared `hogwarts.spells` module
+(`games/hogwarts-legacy/shared`), which reports `fired`, `impact`, and `ended`
+events. It treats a held cast as fired on the first of: `IsStarted_K2()`
 sampled true, a new `ASpellTool:GetActiveMunition()` projectile (one that was
 not already live when the hold began), or the cast ending. Debug mode logs
-`cast held` and `spell fired database=<name> matched|default via
-started|projectile|cast end`. Without a sampled start or new projectile, the
-fire effect is up to one sample late, after `IsStopped()` returns to true.
+`cast held`, `spell fired database=<name> via started|projectile|cast end`,
+and the mod's `spell effect database=<name> matched|default`. Without a
+sampled start or new projectile, the fire effect is up to one sample late,
+after `IsStopped()` returns to true.
 
 Projectile spells end earlier: some munitions (Diffindo's) stay alive after
-the hit to play impact visuals, so their effect ends on the first sample where
-the projectile, having been seen moving, reports `AActor:GetVelocity()` below
-1 cm/s. Debug mode logs `spell effect ended after <s> (projectile stopped)`.
+the hit to play impact visuals, so their effect ends at the cast's `impact`:
+the first sample where the projectile, having been seen moving, reports
+`AActor:GetVelocity()` below 1 cm/s. Debug mode logs
+`projectile stopped after <s>`.
 Whether every projectile munition reports zero velocity on impact is not yet
 verified in game.
 
-A fire effect lasts while its projectile is seen: each 100 ms sample,
+Other fire effects last until the cast ends: each 100 ms sample,
 `GetActiveMunition()` must return a valid actor that is not being destroyed.
-The first sample after firing without one ends the effect, so a spell with no
-projectile gets a single-sample pulse. The effect is capped at 3 s after firing,
+The first sample after firing without one ends the cast, so a spell with no
+projectile gets a single-sample pulse. A cast is capped at 3 s after firing,
 in case a pooled projectile never reports destruction. Debug mode logs
-`projectile <address> <name> life=<seconds>`,
-`projectile gone after <s>`, and `spell effect ended after <s>`; whether every
+`projectile <address> <name> life=<seconds>`, `projectile gone after <s>`, and
+`spell ended database=<name> gone|capped|replaced|cancelled|interrupted [after <s>]`; whether every
 spell's projectile is exposed through `GetActiveMunition()` is not yet
 verified in game.
 
@@ -133,11 +137,12 @@ Profiles match the exact lowercased `DatabaseName`. In-game logs showed
 the dumped Phoenix `*SpellTool` class names, with aliases for the spoken names
 (`imperio`, `petrificustotalus`, `wingardiumleviosa`); they are not yet
 verified in game. Unlisted casts use the default effect and log
-`cast start database=<name> default` in debug mode, which gives the exact name
+`spell effect database=<name> default` in debug mode, which gives the exact name
 to add.
 
 `main.lua` owns DSX discovery, the gameplay gate, packet sending, and the
-polling loop; `spells.lua` owns the spell profiles and cast detection.
+polling loop; `spells.lua` owns the spell profiles; the shared
+`hogwarts.spells` owns cast detection and timing.
 
 To verify, load a save and use **Restart All Mods** in the UE4SS GUI (on the
 inspected installation, `EnableHotReloadSystem = 0`: Ctrl+R does not reload

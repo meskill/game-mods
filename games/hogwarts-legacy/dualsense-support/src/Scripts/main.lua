@@ -12,6 +12,7 @@ local Log = require("ue4ss.log")
 local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
 local getTime = require("socket").gettime
+local SpellCasts = require("hogwarts.spells")
 local Spells = require("spells")
 local Broom = require("broom")
 
@@ -95,7 +96,6 @@ ExecuteAsync(function()
     end
 
     local triggers = AdaptiveTrigger.new(server, index)
-    local spells = Spells.tracker(DEBUG and debugLog or nil)
     local broom = Broom.tracker(DEBUG and debugLog or nil)
     ---@type table<DSXTrigger, table<HogwartsTriggerEffect, DSXInstruction[]>>
     local packets = { [RIGHT_TRIGGER] = {}, [LEFT_TRIGGER] = {} }
@@ -144,6 +144,25 @@ ExecuteAsync(function()
         return true
     end
 
+    ---@type HogwartsTriggerEffect? Fire effect of the latest cast while it lasts.
+    local spellEffect
+    local spells = SpellCasts.tracker({
+        fired = function(cast)
+            local effect, matched = Spells.effect(cast.name)
+            if DEBUG then
+                debugLog(("spell effect database=%s %s"):format(cast.name,
+                    matched and "matched" or "default"))
+            end
+            spellEffect = effect
+            -- A new cast must refresh even an identical effect.
+            if applyEffect(RIGHT_TRIGGER, effect, true) then log("Spell effect: " .. cast.name) end
+        end,
+        impact = function()
+            if spellEffect and spellEffect.untilImpact then spellEffect = nil end
+        end,
+        ended = function() spellEffect = nil end,
+    }, DEBUG and debugLog or nil)
+
     -- DSX answers every datagram with its status; replies show whether it accepted
     -- our trigger packets and still sees the controller.
     local function logReplies()
@@ -167,7 +186,7 @@ ExecuteAsync(function()
         end
         gameplayState = state
         if not pawn or not controller then
-            spells:clear()
+            spells:interrupt()
             applyEffect(RIGHT_TRIGGER, OFF_EFFECT)
             if appliedEffects[LEFT_TRIGGER] then applyEffect(LEFT_TRIGGER, OFF_EFFECT) end
             return
@@ -176,7 +195,7 @@ ExecuteAsync(function()
         -- On a broom both triggers follow the broom; the wand and spells pause.
         local broomRight, broomLeft = broom:update(pawn, controller, now)
         if broomRight and broomLeft then
-            spells:clear()
+            spells:interrupt()
             lastSpellEffect = nil
             applyEffect(RIGHT_TRIGGER, broomRight)
             applyEffect(LEFT_TRIGGER, broomLeft)
@@ -191,14 +210,12 @@ ExecuteAsync(function()
                 heldFor))
         end
         triggerHeld, triggerDown = held, down
-        local effect, cast = spells:update(pawn, now)
+        spells:update(pawn, now)
+        local effect = spellEffect
         if lastSpellEffect and not effect then spellEndedAt = now end
         lastSpellEffect = effect
         local vibrate = held and now >= spellEndedAt + SPELL_END_DELAY
-        if applyEffect(RIGHT_TRIGGER, effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT, cast ~= nil)
-            and cast then
-            log("Spell effect: " .. cast)
-        end
+        applyEffect(RIGHT_TRIGGER, effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT)
     end
 
     Loop.gameThread(POLL_INTERVAL_MS, function()

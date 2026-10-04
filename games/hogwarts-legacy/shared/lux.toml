@@ -2,7 +2,7 @@ package = "hogwarts-legacy"
 version = "0.1.0"
 lua = "5.4"
 
-# Shared by every Hogwarts Legacy mod: game types now, game helpers later.
+# Shared by every Hogwarts Legacy mod: game helpers (src/hogwarts) and game types.
 #
 # types/dump/ holds this game's Lua bindings, produced in-game by the UE4SS GUI console
 # (Dumpers -> Dump Lua Bindings, which writes Mods/shared/types) and copied verbatim.
@@ -22,5 +22,3 @@ type = "builtin"
 
 [test]
 type = "busted"
-# stub
-flags = [ "--version" ]
