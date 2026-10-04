@@ -15,7 +15,7 @@ members = [
     # lx check reports only members' src/ directories, so vendored type stubs in
     # engines/ue4ss/types stay out of the report; .luarc.json lists them in
     # workspace.library.
-    "games/ue4ss/hogwarts-legacy",
+    "glob:games/*/*",
 ]
 
 # [source]

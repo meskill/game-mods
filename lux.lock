@@ -45,6 +45,20 @@
           "source": "sha256-hEmKZavviipO+3dTZpHywpvkU/Ka4b0gFXTxrt67zTE="
         }
       },
+      "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a": {
+        "name": "hogwarts-legacy",
+        "version": "0.1.0-1",
+        "constraint": "==0.1.0",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"hogwarts-legacy\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\dualsense-support\\\\../shared\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source_url": {
+          "type": "file",
+          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\dualsense-support\\../shared"
+        },
+        "hashes": {
+          "rockspec": "sha256-zpP1jxFU5THDtKssfLv9pWZ9EBMIPGWryZIR+S8aXJU=",
+          "source": "sha256-odB910VvzQVat8P3fT6CB/00w3YN5Ny0z9larygQabo="
+        }
+      },
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51": {
         "name": "ue4ss",
         "version": "0.1.0-1",
@@ -78,6 +92,7 @@
       "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260",
       "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
       "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada",
+      "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a",
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51",
       "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9"
     ]

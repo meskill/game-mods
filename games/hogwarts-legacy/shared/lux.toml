@@ -2,43 +2,23 @@ package = "hogwarts-legacy"
 version = "0.1.0"
 lua = "5.4"
 
-# types/ holds this game's Lua bindings, produced in-game by the UE4SS GUI console
+# Shared by every Hogwarts Legacy mod: game types now, game helpers later.
+#
+# types/dump/ holds this game's Lua bindings, produced in-game by the UE4SS GUI console
 # (Dumpers -> Dump Lua Bindings, which writes Mods/shared/types) and copied verbatim.
 # They declare the reflected engine and game classes — AActor, UWorld, FVector,
 # APlayerController, the Phoenix-specific ones — that engines/ue4ss/types/Types.lua only
 # references by name. Editor-only: never require them, they would overwrite UE4SS
-# globals. Regenerate after a game patch or a UE4SS update.
+# globals. Regenerate after a game patch or a UE4SS update by replacing types/dump/
+# entirely; the hand-written notes on those types live beside it in types/*.lua.
 #   Game:    Hogwarts Legacy, Steam app 990080, buildid 20773316
 #            Phoenix/Binaries/Win64/HogwartsLegacy.exe, 450656768 bytes, 2026-08-04
 #   Engine:  Unreal Engine 4.27
 #   Dumper:  UE4SS v3.0.1 Beta #0, Git SHA #fbebf039 (bundled by Ultra+ 13.3.4)
 #   Dumped:  2026-09-12; 1596 files, 16411 class declarations
 
-[dependencies.backends_dsx]
-path = "../../../backends/dsx"
-version = "0.1.0"
-
-# Transitive dependencies required by Lux dist.
-[dependencies]
-dkjson = "==2.11"
-luasocket = "==3.1.0"
-
-
-[dependencies.net]
-path = "../../../core/net"
-version = "0.1.0"
-
-[dependencies.ue4ss]
-path = "../../../engines/ue4ss"
-version = "0.1.0"
-
 [build]
 type = "builtin"
-
-[build.modules]
-main = "src/Scripts/main.lua"
-spells = "src/Scripts/spells.lua"
-broom = "src/Scripts/broom.lua"
 
 [test]
 type = "busted"

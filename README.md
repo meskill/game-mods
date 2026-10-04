@@ -98,7 +98,7 @@ in case a pooled projectile never reports destruction. Debug mode logs
 spell's projectile is exposed through `GetActiveMunition()` is not yet
 verified in game.
 
-Profiles are in `games/ue4ss/hogwarts-legacy/src/Scripts/spells.lua`. They are
+Profiles are in `games/hogwarts-legacy/dualsense-support/src/Scripts/spells.lua`. They are
 custom DSX presets, not recovered Sony profiles. The local player's wand is
 sampled every 100 ms. Changing the spell or wand cancels a pending fire and
 the current fire effect. Pausing, cinematics, or death turn R2 off and cancel
@@ -146,7 +146,7 @@ a supported spell and look for `[HogwartsDualSense] Spell effect: <name>`.
 To identify a spell without a profile, inspect the active spell instance's
 `DatabaseName` in UE4SS **Live View**. Do not invoke `Start`, `StopActive`, or
 other mutating functions merely to inspect state. The generated declarations
-under `games/ue4ss/hogwarts-legacy/types/` describe available APIs, not their
+under `games/hogwarts-legacy/shared/types/dump/` describe available APIs, not their
 runtime timing.
 
 Output goes to the UE4SS GUI log and `ue4ss/UE4SS.log`. To follow the installed

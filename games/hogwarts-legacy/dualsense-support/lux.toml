@@ -1,0 +1,38 @@
+package = "hogwarts-legacy-dualsense-support"
+version = "0.1.0"
+lua = "5.4"
+
+[dependencies.hogwarts-legacy]
+path = "../shared"
+version = "0.1.0"
+
+[dependencies.backends_dsx]
+path = "../../../backends/dsx"
+version = "0.1.0"
+
+# Transitive dependencies required by Lux dist.
+[dependencies]
+dkjson = "==2.11"
+luasocket = "==3.1.0"
+
+
+[dependencies.net]
+path = "../../../core/net"
+version = "0.1.0"
+
+[dependencies.ue4ss]
+path = "../../../engines/ue4ss"
+version = "0.1.0"
+
+[build]
+type = "builtin"
+
+[build.modules]
+main = "src/Scripts/main.lua"
+spells = "src/Scripts/spells.lua"
+broom = "src/Scripts/broom.lua"
+
+[test]
+type = "busted"
+# stub
+flags = [ "--version" ]
