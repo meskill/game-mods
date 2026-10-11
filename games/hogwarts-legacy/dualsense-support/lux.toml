@@ -30,7 +30,7 @@ type = "builtin"
 [build.modules]
 main = "src/Scripts/main.lua"
 spells = "src/Scripts/spells.lua"
-broom = "src/Scripts/broom.lua"
+mounts = "src/Scripts/mounts.lua"
 
 [test]
 type = "busted"

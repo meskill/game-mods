@@ -17,6 +17,10 @@ lua = "5.4"
 #   Dumper:  UE4SS v3.0.1 Beta #0, Git SHA #fbebf039 (bundled by Ultra+ 13.3.4)
 #   Dumped:  2026-09-12; 1596 files, 16411 class declarations
 
+[dependencies.ue4ss]
+path = "../../../engines/ue4ss"
+version = "0.1.0"
+
 [build]
 type = "builtin"
 

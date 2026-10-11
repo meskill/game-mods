@@ -25,10 +25,10 @@ The hold is read from the player controller:
 Whether the game reports DualSense R2 under that key is not yet verified in
 game; debug mode logs `R2 down|held|up (down <s>)` on every change.
 
-### Broom
+### Mounts
 
-While the player rides a broom, both triggers follow the broom instead of the
-wand (spell tracking pauses):
+While the player rides any mount, spell tracking pauses and the triggers
+follow the mount (`mounts.lua`). On a broom both triggers follow the broom:
 
 | Trigger | Effect |
 | --- | --- |
@@ -39,17 +39,40 @@ wand (spell tracking pauses):
 `backends/dsx/API.md` documents `Machine` period as 0-2; period 6 is sent as
 configured (DSX does not validate it).
 
-The broom is the `AFlyingBroom` whose `MountedCharacter` is the player: either
-the controller's possessed pawn, or found by scanning `FlyingBroom` actors at
-most once per second while `ABiped_Player:GetIsOnAMountOrInTransition()` is
-true, then cached. Every sample also requires the player to still be on a
-mount (or the controller to possess the broom): a broom keeps its
-`MountedCharacter` after the rider drops off it. Nitro counts as used up
-when `GetBoostMeterAmount()` falls to 1% of `GetMaxBoostMeter()` and as
-reloaded once it refills to 10% (`READY_FRACTION` in `broom.lua`). Debug mode logs `broom mounted|dismounted`,
+On a creature mount (Graphorn, Hippogriff, and the other `EMountTypes`) R2
+follows what the creature does and L2 is off. These are experimental
+`Galloping` presets (start, end, first foot, second foot, frequency); the game's
+mount component holds its own jog and charge trigger effects, which is why
+those moments get feedback:
+
+| Creature state | R2 effect |
+| --- | --- |
+| On the ground | Two-beat gallop (`Galloping` 0, 9, feet 2 and 5, 3 Hz) |
+| Combat charge (`CombatChargeActive`, Graphorn) | Heavier, faster hooves (`Galloping` 0, 9, feet 4 and 6, 6 Hz) |
+| Flying (`IsFlying()`, Hippogriff) | Slow wingbeats (`Galloping` 0, 9, feet 1 and 3, 1 Hz) |
+
+Debug mode logs `mount <kind> state gallop|charge|flight` on every change.
+The creature reads come from the dumped types and are not verified in game.
+
+Mount tracking lives in the shared `hogwarts.mounts` module
+(`games/hogwarts-legacy/shared`), which reports `mounted` and `dismounted`
+events with the mount's kind: `broom`, or for creature mounts `graphorn`,
+`hippogriff`, `niffler`, or `avatar` (from the handler's `EMountTypes`
+`CreatureMountType`). A broom is the `AFlyingBroom` whose `MountedCharacter`
+is the player; a creature mount is the `ACreature_Character` whose
+`ACreatureMountHandler.RiderCharacter` is the player. The mount is either the
+controller's possessed pawn, or found by scanning `FlyingBroom` and
+`CreatureMountHandler` actors at most once per second while
+`ABiped_Player:GetIsOnAMountOrInTransition()` is true, then cached. Every
+sample also requires the player to still be on a mount (or the controller to
+possess it): a broom keeps its `MountedCharacter` after the rider drops off
+it. Nitro counts as used up when `GetBoostMeterAmount()` falls to 1% of
+`GetMaxBoostMeter()` and as reloaded once it refills to 10%
+(`READY_FRACTION` in `mounts.lua`). Debug mode logs
+`mount mounted <kind> <name>`, `mount dismounted <kind>`,
 `broom boost=<b> recharging=<b> meter=<amount>/<max>` on every boost or
-recharge change, and `nitro empty|recharged`. None of these broom reads are
-verified in game yet.
+recharge change, and `nitro empty|recharged`. The broom reads are not verified
+in game yet; the creature-mount reads follow the dumped types only.
 
 Motion-control fire effects follow this model:
 

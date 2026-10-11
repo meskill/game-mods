@@ -13,8 +13,9 @@ local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
 local getTime = require("socket").gettime
 local SpellCasts = require("hogwarts.spells")
+local MountTracking = require("hogwarts.mounts")
 local Spells = require("spells")
-local Broom = require("broom")
+local Mounts = require("mounts")
 
 local RIGHT_TRIGGER = AdaptiveTrigger.Trigger.Right
 local LEFT_TRIGGER = AdaptiveTrigger.Trigger.Left
@@ -56,11 +57,8 @@ local function activePawn()
     if not controller then return nil, "no valid controller" end
 
     local pawn = controller.Pawn
-    -- On a broom the controller may possess the broom; its rider is the player.
-    if pawn and pawn:IsValid() and pawn:IsA("/Script/Phoenix.FlyingBroom") then
-        ---@cast pawn AFlyingBroom
-        pawn = pawn.MountedCharacter
-    end
+    -- On a mount the controller may possess the mount; its rider is the player.
+    if pawn and pawn:IsValid() then pawn = MountTracking.rider(pawn) or pawn end
     if not pawn or not pawn:IsValid() or not pawn:IsA("/Script/Phoenix.Biped_Player") then
         return nil, "missing, invalid, or non-player pawn"
     end
@@ -96,7 +94,10 @@ ExecuteAsync(function()
     end
 
     local triggers = AdaptiveTrigger.new(server, index)
-    local broom = Broom.tracker(DEBUG and debugLog or nil)
+    local mountEffects = Mounts.effects(DEBUG and debugLog or nil)
+    local mounts = MountTracking.tracker({
+        dismounted = function() mountEffects:reset() end,
+    }, DEBUG and debugLog or nil)
     ---@type table<DSXTrigger, table<HogwartsTriggerEffect, DSXInstruction[]>>
     local packets = { [RIGHT_TRIGGER] = {}, [LEFT_TRIGGER] = {} }
     -- L2 stays untouched until the broom first drives it.
@@ -192,13 +193,18 @@ ExecuteAsync(function()
             return
         end
         local now = getTime()
-        -- On a broom both triggers follow the broom; the wand and spells pause.
-        local broomRight, broomLeft = broom:update(pawn, controller, now)
-        if broomRight and broomLeft then
+        -- On a mount the wand and spells pause and the triggers follow the mount.
+        local mount = mounts:update(pawn, controller, now)
+        if mount then
             spells:interrupt()
             lastSpellEffect = nil
-            applyEffect(RIGHT_TRIGGER, broomRight)
-            applyEffect(LEFT_TRIGGER, broomLeft)
+            local right, left = mountEffects:update(mount)
+            applyEffect(RIGHT_TRIGGER, right)
+            if left then
+                applyEffect(LEFT_TRIGGER, left)
+            elseif appliedEffects[LEFT_TRIGGER] then
+                applyEffect(LEFT_TRIGGER, OFF_EFFECT)
+            end
             return
         end
         if appliedEffects[LEFT_TRIGGER] then applyEffect(LEFT_TRIGGER, OFF_EFFECT) end

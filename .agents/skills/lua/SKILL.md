@@ -5,47 +5,31 @@ description: Use when reading, writing, reviewing, debugging, or refactoring Lua
 
 # Lua development
 
-Use this skill for Lua code work throughout the project. Current guidance covers the Lux workflow that supports that work; Lua coding patterns can be added later. Follow existing code conventions in the meantime.
+Use this skill for Lua code or lua dependencies work throughout the project.
 
-## Sources of truth
+## Dependencies
 
-Paths below are relative to the repository root, not this skill directory (`../../..` from here).
+The dependencies are managed by `lux` tool.
 
-- Read `CONTRIBUTING.md` for tooling installation and required development environment setup before updating dependencies or building packages.
-- Read the root `lux.toml` and the affected package's `lux.toml` before choosing commands or changing dependencies. Use the manifest's `package` value for package selectors, not its directory name.
-- Consult installed command help for version-specific flags. Official documentation: https://lux.lumen-labs.org/.
+- Use commands `lux add <dependency> -p <package>` to add specific dependency to the specified package.
+- Read the root `lux.toml` and the affected package's `lux.toml` before choosing commands or changing dependencies. Use the manifest's `package` value for package selectors, not its directory name
+- in case of uncertainty consult the official [doc](https://lux.lumen-labs.org/) and `--help` flag for lux commands.
 
-## Commands
-
-Run workspace commands from the repository root after following the relevant setup instructions in `CONTRIBUTING.md`. Replace example package names with the affected manifest's `package` value.
-
-| Task | Command |
-| --- | --- |
-| Inspect installed version | `lx --version` |
-| Add a dependency to the current package | `lux add <dependency>` |
-| Add a dependency to a workspace member | `lux add <dependency> -p net` |
-| Build a workspace member | `lx build -p net` |
-| Test a workspace member | `lx test -p net` |
-
-Angle-bracket values are placeholders, not literal Nushell arguments.
+## Code
 
 ### Type checking
 
 Run `lx check` from the repository root; it checks every workspace member at once.
-
-```nu
-lx check
-```
 
 Do not pass `--path`: it treats the directory as a standalone project and litters the
 member with its own `lux.lock`, `.lux/` tree, and `.luarc.json`. There is no supported
 way to check a single package today. Type-library configuration therefore belongs in
 the root `.luarc.json` (`workspace.library`), not in per-package copies.
 
-## Working discipline
+### Tests
 
-- Add dependencies through Lux in the consuming package, not the root package by default. Let Lux manage dependency resolution and `lux.lock`; do not hand-edit the lockfile or use standalone LuaRocks commands as a substitute.
-- Preserve the manifest's Lua version and existing dependency style, including local path dependencies. Do not upgrade tooling or unrelated dependencies as part of ordinary Lua work.
-- Follow each package's `[build]` and `[test]` configuration. The current packages use the builtin build backend and Busted tests; run them through Lux rather than invoking Busted directly.
-- After a change, run the affected package's type check and tests; build when the change affects packaging or native dependencies. Include dependent packages when their behavior is affected.
-- Report the exact commands and outcomes. Missing build tools, failed dependency installation, and unavailable test backends are blockers, not successful checks.
+To test a package use `lx test -p <package>`.
+
+Put tests to the spec directory in package and define the `[test]` configuration in the `lux.toml` file.
+
+The tests should be present for any package - if there is no meaningful test add the `stub_spec.lua` with the stub to avoid errors when running tests on the workspace caused by missing tests.
