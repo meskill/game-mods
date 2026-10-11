@@ -11,22 +11,22 @@ UDP.__index = UDP
 ---@return UDP? client
 ---@return string? error
 function UDP.connect(host, port)
-    local handle, err = socket.udp()
-    if not handle then
-        return nil, err
-    end
+	local handle, err = socket.udp()
+	if not handle then
+		return nil, err
+	end
 
-    local ok
-    ok, err = handle:settimeout(0)
-    if ok then
-        ok, err = handle:setpeername(host, port)
-    end
-    if not ok then
-        handle:close()
-        return nil, err
-    end
+	local ok
+	ok, err = handle:settimeout(0)
+	if ok then
+		ok, err = handle:setpeername(host, port)
+	end
+	if not ok then
+		handle:close()
+		return nil, err
+	end
 
-    return setmetatable({ socket = handle }, UDP)
+	return setmetatable({ socket = handle }, UDP)
 end
 
 ---Send exactly one datagram. Success is not a delivery acknowledgement.
@@ -34,10 +34,10 @@ end
 ---@return number? success
 ---@return string? error
 function UDP:send(data)
-    if not self.socket then
-        return nil, "closed"
-    end
-    return self.socket:send(data)
+	if not self.socket then
+		return nil, "closed"
+	end
+	return self.socket:send(data)
 end
 
 ---Read one datagram. Without a timeout this never waits: nil, "timeout"
@@ -46,25 +46,25 @@ end
 ---@return string? data
 ---@return string? error
 function UDP:receive(timeout)
-    if not self.socket then
-        return nil, "closed"
-    end
-    if timeout then
-        self.socket:settimeout(timeout)
-    end
-    -- Accept any IPv4 UDP payload without silently truncating it.
-    local data, err = self.socket:receive(65507)
-    if timeout then
-        self.socket:settimeout(0)
-    end
-    return data, err
+	if not self.socket then
+		return nil, "closed"
+	end
+	if timeout then
+		self.socket:settimeout(timeout)
+	end
+	-- Accept any IPv4 UDP payload without silently truncating it.
+	local data, err = self.socket:receive(65507)
+	if timeout then
+		self.socket:settimeout(0)
+	end
+	return data, err
 end
 
 function UDP:close()
-    if self.socket then
-        self.socket:close()
-        self.socket = nil
-    end
+	if self.socket then
+		self.socket:close()
+		self.socket = nil
+	end
 end
 
 return UDP

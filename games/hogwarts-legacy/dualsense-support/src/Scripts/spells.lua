@@ -41,40 +41,40 @@ local AREA = { mode = Mode.VIBRATION, args = { 1, 8, 10 } }
 -- spell names.
 ---@type table<string, HogwartsTriggerEffect?>
 local EFFECTS = {
-    -- Motion control.
-    accio = PULL,
-    levioso = PULL,
-    depulso = PUSH,
-    descendo = PUSH,
+	-- Motion control.
+	accio = PULL,
+	levioso = PULL,
+	depulso = PUSH,
+	descendo = PUSH,
 
-    -- Projectile spells.
-    diffindo = PROJECTILE,
-    expelliarmus = PROJECTILE,
-    flipendo = PROJECTILE,
-    avadakedavra = PROJECTILE,
-    imperius = PROJECTILE,
-    arrestomomentum = PROJECTILE,
-    bombarda = PROJECTILE,
-    confringo = PROJECTILE,
-    oppugno = PROJECTILE,
-    crucio = PROJECTILE,
-    confundo = PROJECTILE,
-    glacius = PROJECTILE,
+	-- Projectile spells.
+	diffindo = PROJECTILE,
+	expelliarmus = PROJECTILE,
+	flipendo = PROJECTILE,
+	avadakedavra = PROJECTILE,
+	imperius = PROJECTILE,
+	arrestomomentum = PROJECTILE,
+	bombarda = PROJECTILE,
+	confringo = PROJECTILE,
+	oppugno = PROJECTILE,
+	crucio = PROJECTILE,
+	confundo = PROJECTILE,
+	glacius = PROJECTILE,
 
-    -- Utility spells.
-    lumos = UTILITY,
-    petrificus = UTILITY,
-    protego = UTILITY,
-    wingardium = UTILITY,
-    disillusionment = UTILITY,
-    obliviate = UTILITY,
-    episkey = UTILITY,
-    finite = UTILITY,
-    revelio = UTILITY,
-    reparo = UTILITY,
+	-- Utility spells.
+	lumos = UTILITY,
+	petrificus = UTILITY,
+	protego = UTILITY,
+	wingardium = UTILITY,
+	disillusionment = UTILITY,
+	obliviate = UTILITY,
+	episkey = UTILITY,
+	finite = UTILITY,
+	revelio = UTILITY,
+	reparo = UTILITY,
 
-    -- Area spells.
-    incendio = AREA,
+	-- Area spells.
+	incendio = AREA,
 }
 -- Sony identifies Bombarda objects by both names.
 EFFECTS.expulso = EFFECTS.bombarda
@@ -96,9 +96,11 @@ local Spells = {}
 ---@return HogwartsTriggerEffect effect
 ---@return boolean matched False when the default effect stands in.
 function Spells.effect(name)
-    local effect = EFFECTS[name]
-    if effect then return effect, true end
-    return DEFAULT_EFFECT, false
+	local effect = EFFECTS[name]
+	if effect then
+		return effect, true
+	end
+	return DEFAULT_EFFECT, false
 end
 
 return Spells

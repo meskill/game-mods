@@ -42,11 +42,17 @@ local CREATURE_EFFECTS = { gallop = GALLOP, charge = CHARGE, flight = WINGBEATS 
 ---@param creature ACreature_Character
 ---@return "gallop"|"charge"|"flight"
 local function creatureState(creature)
-    local component = creature:GetMountComponent()
-    if not component or not component:IsValid() then return "gallop" end
-    if component.CombatChargeActive then return "charge" end
-    if component:IsFlying() then return "flight" end
-    return "gallop"
+	local component = creature:GetMountComponent()
+	if not component or not component:IsValid() then
+		return "gallop"
+	end
+	if component.CombatChargeActive then
+		return "charge"
+	end
+	if component:IsFlying() then
+		return "flight"
+	end
+	return "gallop"
 end
 
 ---Trigger effects of the mount the player rides.
@@ -64,13 +70,13 @@ local Mounts = {}
 ---@param log? fun(message: string) Receives broom nitro and creature state transitions.
 ---@return HogwartsMountEffects
 function Mounts.effects(log)
-    return setmetatable({ empty = false, boosting = false, recharging = false, log = log }, Effects)
+	return setmetatable({ empty = false, boosting = false, recharging = false, log = log }, Effects)
 end
 
 ---Forget per-mount state after the player dismounts.
 function Effects:reset()
-    self.empty, self.boosting, self.recharging = false, false, false
-    self.state = nil
+	self.empty, self.boosting, self.recharging = false, false, false
+	self.state = nil
 end
 
 ---@private
@@ -78,22 +84,32 @@ end
 ---@return HogwartsTriggerEffect right
 ---@return HogwartsTriggerEffect left
 function Effects:broom(broom)
-    local amount, max = broom:GetBoostMeterAmount(), broom:GetMaxBoostMeter()
-    local boosting, recharging = broom:IsInBoost(), broom:IsBoostRecharging()
-    if self.log and (boosting ~= self.boosting or recharging ~= self.recharging) then
-        self.log(("broom boost=%s recharging=%s meter=%.2f/%.2f"):format(tostring(boosting),
-            tostring(recharging), amount, max))
-    end
-    self.boosting, self.recharging = boosting, recharging
+	local amount, max = broom:GetBoostMeterAmount(), broom:GetMaxBoostMeter()
+	local boosting, recharging = broom:IsInBoost(), broom:IsBoostRecharging()
+	if self.log and (boosting ~= self.boosting or recharging ~= self.recharging) then
+		self.log(
+			("broom boost=%s recharging=%s meter=%.2f/%.2f"):format(
+				tostring(boosting),
+				tostring(recharging),
+				amount,
+				max
+			)
+		)
+	end
+	self.boosting, self.recharging = boosting, recharging
 
-    if not self.empty and amount <= max * EMPTY_FRACTION then
-        self.empty = true
-        if self.log then self.log(("nitro empty meter=%.2f/%.2f"):format(amount, max)) end
-    elseif self.empty and max > 0 and amount >= max * READY_FRACTION then
-        self.empty = false
-        if self.log then self.log(("nitro recharged meter=%.2f/%.2f"):format(amount, max)) end
-    end
-    return BOOST, self.empty and NITRO_EMPTY or NITRO
+	if not self.empty and amount <= max * EMPTY_FRACTION then
+		self.empty = true
+		if self.log then
+			self.log(("nitro empty meter=%.2f/%.2f"):format(amount, max))
+		end
+	elseif self.empty and max > 0 and amount >= max * READY_FRACTION then
+		self.empty = false
+		if self.log then
+			self.log(("nitro recharged meter=%.2f/%.2f"):format(amount, max))
+		end
+	end
+	return BOOST, self.empty and NITRO_EMPTY or NITRO
 end
 
 ---Effects while the player rides `mount`.
@@ -101,15 +117,15 @@ end
 ---@return HogwartsTriggerEffect right R2 effect.
 ---@return HogwartsTriggerEffect? left L2 effect, or nil to leave L2 off.
 function Effects:update(mount)
-    if mount.kind == "broom" then
-        return self:broom(mount.actor --[[@as AFlyingBroom]])
-    end
-    local state = creatureState(mount.actor --[[@as ACreature_Character]])
-    if self.log and state ~= self.state then
-        self.log(("mount %s state %s"):format(mount.kind, state))
-    end
-    self.state = state
-    return CREATURE_EFFECTS[state], nil
+	if mount.kind == "broom" then
+		return self:broom(mount.actor --[[@as AFlyingBroom]])
+	end
+	local state = creatureState(mount.actor --[[@as ACreature_Character]])
+	if self.log and state ~= self.state then
+		self.log(("mount %s state %s"):format(mount.kind, state))
+	end
+	self.state = state
+	return CREATURE_EFFECTS[state], nil
 end
 
 return Mounts

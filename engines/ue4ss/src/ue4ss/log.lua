@@ -5,10 +5,10 @@ local Log = {}
 ---@param tag string Prepended to every message, e.g. "[MyMod]".
 ---@return fun(message: string)
 function Log.new(tag)
-    local head = tag .. " "
-    return function(message)
-        print(head .. message .. "\n")
-    end
+	local head = tag .. " "
+	return function(message)
+		print(head .. message .. "\n")
+	end
 end
 
 return Log

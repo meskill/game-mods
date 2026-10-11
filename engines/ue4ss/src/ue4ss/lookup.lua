@@ -12,7 +12,7 @@ Lookup.__index = Lookup
 ---@param object UObject
 ---@return boolean
 local function isValid(object)
-    return object:IsValid()
+	return object:IsValid()
 end
 
 ---@param interval number Minimum seconds between searches.
@@ -21,9 +21,12 @@ end
 ---applies; defaults to checking that it is valid.
 ---@return UE4SSLookup
 function Lookup.new(interval, search, keep)
-    return setmetatable({
-        interval = interval, search = search, keep = keep or isValid, nextSearchAt = -math.huge,
-    }, Lookup)
+	return setmetatable({
+		interval = interval,
+		search = search,
+		keep = keep or isValid,
+		nextSearchAt = -math.huge,
+	}, Lookup)
 end
 
 ---The cached object while it still applies. Otherwise searches, at most once
@@ -32,17 +35,17 @@ end
 ---@param ... any Passed to keep and search.
 ---@return any
 function Lookup:get(now, ...)
-    local object = self.object
-    if object ~= nil and self.keep(object, ...) then
-        return object
-    end
-    self.object = nil
-    if now < self.nextSearchAt then
-        return nil
-    end
-    self.nextSearchAt = now + self.interval
-    self.object = self.search(...)
-    return self.object
+	local object = self.object
+	if object ~= nil and self.keep(object, ...) then
+		return object
+	end
+	self.object = nil
+	if now < self.nextSearchAt then
+		return nil
+	end
+	self.nextSearchAt = now + self.interval
+	self.object = self.search(...)
+	return self.object
 end
 
 ---Caches an object found another way, without waiting for a search.
@@ -50,13 +53,13 @@ end
 ---@param object T
 ---@return T
 function Lookup:set(object)
-    self.object = object
-    return object
+	self.object = object
+	return object
 end
 
 ---Forgets the cached object. The search interval still applies.
 function Lookup:clear()
-    self.object = nil
+	self.object = nil
 end
 
 return Lookup

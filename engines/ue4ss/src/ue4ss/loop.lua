@@ -9,35 +9,35 @@ local Loop = {}
 ---@param update fun(): boolean? Returns true to stop polling.
 ---@param onError fun(message: string)
 function Loop.gameThread(intervalMs, update, onError)
-    local pending, stopped = false, false
-    ---@type string?
-    local lastError
+	local pending, stopped = false, false
+	---@type string?
+	local lastError
 
-    local function run()
-        local ok, result = pcall(update)
-        if ok then
-            stopped = stopped or result == true
-        else
-            local message = tostring(result)
-            if message ~= lastError then
-                lastError = message
-                onError(message)
-            end
-        end
-        -- Cleared even after an error, or polling would stall forever.
-        pending = false
-    end
+	local function run()
+		local ok, result = pcall(update)
+		if ok then
+			stopped = stopped or result == true
+		else
+			local message = tostring(result)
+			if message ~= lastError then
+				lastError = message
+				onError(message)
+			end
+		end
+		-- Cleared even after an error, or polling would stall forever.
+		pending = false
+	end
 
-    LoopAsync(intervalMs, function()
-        if stopped then
-            return true
-        end
-        if not pending then
-            pending = true
-            ExecuteInGameThread(run)
-        end
-        return false
-    end)
+	LoopAsync(intervalMs, function()
+		if stopped then
+			return true
+		end
+		if not pending then
+			pending = true
+			ExecuteInGameThread(run)
+		end
+		return false
+	end)
 end
 
 return Loop
