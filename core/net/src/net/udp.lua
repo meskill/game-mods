@@ -1,4 +1,4 @@
-local socket = require("socket")
+local socket = require("net.socket")
 
 ---@class UDP
 ---@field private socket any

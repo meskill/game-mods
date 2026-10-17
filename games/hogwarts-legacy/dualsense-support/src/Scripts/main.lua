@@ -1,17 +1,13 @@
 -- Requires DSX running with UDP enabled and a connected adaptive-trigger controller.
 -- Deploy the backends_dsx Lua modules and transitive dependencies on UE4SS's module paths.
 -- DSX effects persist: return to a paused state before disabling/reloading this mod.
--- Windows does not search package.cpath for a native module's DLL dependencies.
-local luaDll = assert(package.searchpath("lua54", package.cpath))
-assert(package.loadlib(luaDll, "*"))
-
 local Objects = require("ue4ss.objects")
 local Lookup = require("ue4ss.lookup")
 local Loop = require("ue4ss.loop")
 local Log = require("ue4ss.log")
 local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
-local getTime = require("socket").gettime
+local getTime = require("net.socket").gettime
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
 local Spells = require("spells")
