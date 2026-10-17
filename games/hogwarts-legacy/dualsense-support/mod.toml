@@ -1,0 +1,5 @@
+name = "dualsense-support"
+game = "hogwarts-legacy"
+
+[build]
+type = "ue4ss"

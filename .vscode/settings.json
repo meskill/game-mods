@@ -1,0 +1,10 @@
+{
+    // Integrated terminal = dev.cmd: nu with the MSVC build tools and `dist`.
+    "terminal.integrated.profiles.windows": {
+        "dev": {
+            "path": "${env:windir}\\System32\\cmd.exe",
+            "args": ["/c", "${workspaceFolder}\\dev.cmd"]
+        }
+    },
+    "terminal.integrated.defaultProfile.windows": "dev"
+}

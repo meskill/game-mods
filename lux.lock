@@ -6,14 +6,14 @@
         "name": "net",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"net\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\Dualsense-games\\\\backends\\\\dsx\\\\../../core/net\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"net\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\backends\\\\dsx\\\\../../core/net\",\n}\nbuild = {\n  type = \"source\"\n}",
         "source_url": {
           "type": "file",
-          "path": "D:/Projects\\Dualsense-games\\backends\\dsx\\../../core/net"
+          "path": "D:/Projects\\game-mods\\backends\\dsx\\../../core/net"
         },
         "hashes": {
-          "rockspec": "sha256-WCw5adPA9VIddzHuaOGQ8bjcZeFCdM4pxmxVeGTnVBQ=",
-          "source": "sha256-GUluRXy6pOmumitYRsJHn3xvfNjyMpkn1H2nISQ3yt8="
+          "rockspec": "sha256-07vlrm3dWrrM8TyZCzVRx8we+y/ryymVG17EeL8vzqM=",
+          "source": "sha256-1TfXQ+nSPVa3wK+x8RfGXUQT8efnkK/6hNpNxla4IpM="
         }
       },
       "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad": {
@@ -56,35 +56,35 @@
         },
         "hashes": {
           "rockspec": "sha256-zpP1jxFU5THDtKssfLv9pWZ9EBMIPGWryZIR+S8aXJU=",
-          "source": "sha256-odB910VvzQVat8P3fT6CB/00w3YN5Ny0z9larygQabo="
+          "source": "sha256-8dj1ofYR7DiI4foKR+SNMwVk7VfV+onMns6mxxGLjJo="
         }
       },
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51": {
         "name": "ue4ss",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:\\\\Projects\\\\game-mods\\\\games/ue4ss/hogwarts-legacy\\\\../ue4ss\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\shared\\\\../../../engines/ue4ss\",\n}\nbuild = {\n  type = \"source\"\n}",
         "source_url": {
           "type": "file",
-          "path": "D:\\Projects\\game-mods\\games/ue4ss/hogwarts-legacy\\../ue4ss"
+          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\shared\\../../../engines/ue4ss"
         },
         "hashes": {
-          "rockspec": "sha256-/YgTGaJLUYOWowbnDJ/YDUC6h2Ev+wMF/ICrR4aYfbM=",
-          "source": "sha256-peZsYI7xgBtLpnHHRdIzr1HQ/drx055VcwQueg9vGT8="
+          "rockspec": "sha256-uNT2B7b1QhGdxxdlaYsYrmlIEAVJHuGPaJFwWS5/OK0=",
+          "source": "sha256-uJYF4RSsnaZTxAmOh6aVX7U4Fezc3Tyjom44Ezxsllw="
         }
       },
       "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9": {
         "name": "backends_dsx",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"backends_dsx\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:\\\\Projects\\\\Dualsense-games\\\\games/ue4ss/hogwarts-legacy\\\\../../../backends/dsx\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"backends_dsx\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\dualsense-support\\\\../../../backends/dsx\",\n}\nbuild = {\n  type = \"source\"\n}",
         "source_url": {
           "type": "file",
-          "path": "D:\\Projects\\Dualsense-games\\games/ue4ss/hogwarts-legacy\\../../../backends/dsx"
+          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\dualsense-support\\../../../backends/dsx"
         },
         "hashes": {
-          "rockspec": "sha256-MNqyZGueY9tSZZuOYAomLFM1FnC2INVFsJT4Wsl2Emg=",
-          "source": "sha256-uwsi8aEUqjFotLTP+g6E8SewJk0J8zSlgJ1+x2QG5Ig="
+          "rockspec": "sha256-Cv6mWtGrAM4XWjfjaHVf3iIIyEtP1iJKyu1+KvlqP/A=",
+          "source": "sha256-/bMvuRgrSbMMpxPVOXjYMPYPDjQSnVGuzfhF+NPZFLw="
         }
       }
     },
