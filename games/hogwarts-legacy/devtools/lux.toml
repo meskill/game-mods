@@ -3,10 +3,15 @@ version = "0.1.0"
 lua = "5.4"
 
 # Development mod for Hogwarts Legacy: engines/ue4ss/devtools plus the
-# optional src/experiment.lua it runs on each load. Never ship it.
+# local src/experiment-local.lua it runs on each load, and the game's shared
+# helpers the experiments use. Never ship it.
 
 [dependencies.ue4ss-devtools]
 path = "../../../engines/ue4ss/devtools"
+version = "0.1.0"
+
+[dependencies.hogwarts-legacy]
+path = "../shared"
 version = "0.1.0"
 
 # Transitive dependencies required by Lux dist.

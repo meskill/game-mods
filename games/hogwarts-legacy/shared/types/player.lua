@@ -17,6 +17,22 @@ local ABiped_Character = {}
 ---@return AWandTool
 function ABiped_Character:GetWand() end
 
+---Sets the right arm request at a priority; the highest-priority request
+---moves the arm, and a request outlasts higher ones and takes the arm back
+---when they end. Seen: `StartLumos` (14) at `Lumos` (8) holds the wand up as
+---for Lumos; `None` (0) clears a priority's request. The game calls it with
+---`bBroadcastChange` true, which runs `WandTool:OnRightArmStateChanged`.
+---@param InState ERightArmState::Type
+---@param InPriority ERightArmPriority::Type
+---@param bBroadcastChange boolean
+function ABiped_Character:SetRightArmState(InState, InPriority, bBroadcastChange) end
+
+---The right arm request at a priority, `None` (0) if there is none; at
+---`None` the winning state.
+---@param InPriority ERightArmPriority::Type
+---@return ERightArmState::Type
+function ABiped_Character:GetRightArmState(InPriority) end
+
 ---Whether the character is dead.
 ---@return boolean
 function ABiped_Character:IsDead() end

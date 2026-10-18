@@ -1,10 +1,21 @@
--- The local player's wand arm, from a hook on the wand's arm-state changes. The
--- right hand is up with the wand (raised) in state `RAISED`; casting a spell
--- moves it to `CASTING`. The state is unknown (nil) until the first change after
--- the hook is installed.
+-- The local player's wand arm, from hooks:
+-- - the arm state, from the wand's arm-state changes: the state of the
+--   highest-priority arm request, e.g. `RAISED`, `CASTING`, or 14
+--   (`StartLumos`) while Lumos holds the wand up. It is unknown (nil) until the
+--   first change after the hook is installed.
+-- - whether the wand is raised for a cast (the player holds the cast button):
+--   the game requests it at `UpperBodyAnticipation` priority and clears it on
+--   release. A higher request, e.g. Lumos's, hides it from the arm state, so it
+--   is read from the request itself (`Biped_Character:SetRightArmState`).
 
 local CHANGED = "/Script/Phoenix.WandTool:OnRightArmStateChanged"
+local REQUESTED = "/Script/Phoenix.Biped_Character:SetRightArmState"
 local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
+
+-- ERightArmPriority.UpperBodyAnticipation: the raise while the cast button is held.
+local RAISE_PRIORITY = 4
+-- ERightArmState.None: no request.
+local NONE = 0
 
 -- Owners followed from the wand before giving up on finding the player.
 local MAX_OWNERS = 4
@@ -22,6 +33,7 @@ local State = {
 ---Called on the game thread, inside the hooked call.
 ---@class HogwartsWandListener
 ---@field changed? fun(state: HogwartsArmState, last: HogwartsArmState?) The player's arm state changed; repeats are left out.
+---@field raised? fun(raised: boolean) The player raised the wand for a cast, or stopped.
 
 local Wand = {}
 
@@ -29,6 +41,7 @@ Wand.State = State
 
 ---@type HogwartsArmState?
 local current
+local raised = false
 local hooked = false
 ---@type HogwartsWandListener[]
 local listeners = {}
@@ -55,13 +68,14 @@ local function playerWand(wand)
 	return false
 end
 
----@param state HogwartsArmState
----@param last HogwartsArmState?
-local function notify(state, last)
+---Calls each listener's `field` with the arguments.
+---@param field "changed"|"raised"
+local function notify(field, ...)
 	-- A copy, so listeners may unsubscribe while being notified.
 	for _, listener in ipairs({ table.unpack(listeners) }) do
-		if listener.changed then
-			listener.changed(state, last)
+		local callback = listener[field]
+		if callback then
+			callback(...)
 		end
 	end
 end
@@ -83,7 +97,22 @@ local function hook()
 		end
 		local last = current
 		current = value
-		notify(value, last)
+		notify("changed", value, last)
+	end)
+	RegisterHook(REQUESTED, function(context, state, priority)
+		if priority:get() ~= RAISE_PRIORITY then
+			return
+		end
+		local character = (context --[[@as any]]):get()
+		if not character:IsValid() or not character:IsA(PLAYER_CLASS) then
+			return
+		end
+		local value = state:get() ~= NONE
+		if value == raised then
+			return
+		end
+		raised = value
+		notify("raised", value)
 	end)
 	hooked = true
 end
@@ -94,14 +123,17 @@ function Wand.state()
 	return current
 end
 
----Whether the player's right hand is up with the wand.
+---Whether the player has the wand raised for a cast (holds the cast button),
+---as of the last hooked request; true even while a higher request, such as
+---Lumos, decides the arm state.
 ---@return boolean
 function Wand.isRaised()
-	return current == State.RAISED
+	return raised
 end
 
----Calls the listener whenever the player's arm state changes. Installs the hook
----on first use: call it on the game thread or at load.
+---Calls the listener whenever the player's arm state changes or the wand is
+---raised or lowered. Installs the hooks on first use: call it on the game
+---thread or at load.
 ---@param listener HogwartsWandListener
 ---@return fun() unsubscribe
 function Wand.subscribe(listener)

@@ -28,21 +28,26 @@ local log = Log.new("[HogwartsDualSense]")
 -- player on foot.
 local spells = SpellCasts.tracker(log)
 
--- The wand arm hook also registers at load; ExecuteAsync sets the handler once
--- it can send effects.
----@type fun(state: HogwartsArmState, last: HogwartsArmState?)?
+-- The wand hooks also register at load; ExecuteAsync sets the handler once it
+-- can send effects.
+---@type fun()?
 local armChanged
 Wand.subscribe({
-	changed = function(state, last)
+	changed = function()
 		if armChanged then
-			armChanged(state, last)
+			armChanged()
+		end
+	end,
+	raised = function()
+		if armChanged then
+			armChanged()
 		end
 	end,
 })
 
 -- Wand effects during gameplay; a spell fire effect from spells.lua overrides both.
--- The baseline holds while the wand is down; raising it (right hand up with the
--- wand) switches to the light hold vibration.
+-- The baseline holds while the wand is down; raising it for a cast (holding R2,
+-- also while Lumos holds the wand up) switches to the light hold vibration.
 ---@type HogwartsTriggerEffect
 local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.GameCube, args = {} }
 ---@type HogwartsTriggerEffect
@@ -160,11 +165,13 @@ ExecuteAsync(function()
 		return true
 	end
 
-	-- R2 shows a cast's fire effect from `fired` until `ended`, or until `impact`
-	-- for projectile effects. Spell hooks call these between polls, so they apply
-	-- the effect themselves.
+	-- R2 shows a cast's fire effect from `fired` until `ended`, until `impact`
+	-- for projectile effects, or for its `duration`. Spell hooks call these
+	-- between polls, so they apply the effect themselves.
 	---@type HogwartsTriggerEffect? Fire effect of the latest cast while it lasts.
 	local spellEffect
+	-- When a fire effect with a duration ends; checked by each poll.
+	local spellEffectEndsAt = math.huge
 
 	-- R2 on foot: the fire effect, else the hold vibration while the wand is raised,
 	-- else the baseline. After a fire effect, the baseline lasts a moment before the
@@ -203,6 +210,7 @@ ExecuteAsync(function()
 				return
 			end
 			spellEffect = effect
+			spellEffectEndsAt = effect.duration and getTime() + effect.duration or math.huge
 			-- A new cast must refresh even an identical effect.
 			applyEffect(RIGHT_TRIGGER, effect, true)
 		end,
@@ -233,7 +241,7 @@ ExecuteAsync(function()
 		end,
 	})
 
-	-- Arm changes apply at once instead of waiting for the next poll.
+	-- Arm and raise changes apply at once instead of waiting for the next poll.
 	armChanged = function()
 		if onFoot then
 			applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
@@ -265,6 +273,9 @@ ExecuteAsync(function()
 		-- 3. On foot: L2 is unused, R2 follows the wand; spell hooks report casts.
 		onFoot = true
 		spells:resume()
+		if spellEffect and getTime() >= spellEffectEndsAt then
+			endSpellEffect(false)
+		end
 		if appliedEffects[LEFT_TRIGGER] then
 			applyEffect(LEFT_TRIGGER, OFF_EFFECT)
 		end

@@ -4,6 +4,7 @@ local AdaptiveTrigger = require("adaptive_triggers")
 ---@field mode DSXTriggerMode
 ---@field args integer[]
 ---@field untilImpact? boolean End when the projectile stops moving, not when it disappears.
+---@field duration? number Seconds after which the effect ends at the latest: for casts the tracker never ends.
 
 local Mode = AdaptiveTrigger.Mode
 
@@ -30,6 +31,10 @@ local PROJECTILE = { mode = Mode.VIBRATION, args = { 2, 5, 8 }, untilImpact = tr
 -- above the R2 hold vibration (VIBRATION's start cannot go below 1).
 ---@type HogwartsTriggerEffect
 local UTILITY = { mode = Mode.MULTIPLE_POSITION_VIBRATION, args = { 20, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 } }
+-- The utility vibration as a short pulse, for toggles without a projectile:
+-- their cast never ends as "gone", only when the next spell replaces it.
+---@type HogwartsTriggerEffect
+local TOGGLE = { mode = UTILITY.mode, args = UTILITY.args, duration = 0.3 }
 -- Heavy vibration for spells that hit many targets at once: maximum amplitude
 -- from the top of travel, at a low rumbling frequency.
 ---@type HogwartsTriggerEffect
@@ -60,7 +65,7 @@ local EFFECTS = {
 	glacius = PROJECTILE,
 
 	-- Utility spells.
-	lumos = UTILITY,
+	lumos = TOGGLE,
 	petrificus = UTILITY,
 	wingardium = UTILITY,
 	disillusionment = UTILITY,

@@ -73,7 +73,7 @@ local Spells = require("hogwarts.spells")
 -- warn receives hooks that could not be registered and fire poll errors.
 local tracker = Spells.tracker(print)
 tracker:listen({
-	fired = function(cast) end, -- cast.name: lowercased DatabaseName, e.g. "confringo"
+	fired = function(cast) end, -- cast.name: lowercased DatabaseName, e.g. "confringo"; cast.spell: its spell tool
 	impact = function(cast) end, -- its projectile hit something; at most once
 	ended = function(cast, reason) end, -- no further events for this cast
 })
@@ -81,9 +81,9 @@ tracker:resume() -- report casts, e.g. while the player is on foot in gameplay
 tracker:pause() -- ignore them and end the current cast ("interrupted")
 ```
 
-`fired` comes from `Start`, which runs on the cast's spell tool: `cast.name` is
-that tool's `DatabaseName`, lowercased (`"confringo"`). Upgraded spells keep
-the base name. The basic attack fires nothing and ends the
+`fired` comes from `Start`, which runs on the cast's spell tool: `cast.spell` is
+that tool and `cast.name` its `DatabaseName`, lowercased (`"confringo"`).
+Upgraded spells keep the base name. The basic attack fires nothing and ends the
 current cast as `"cancelled"`. `ended` reasons: `"gone"` when the projectile
 is destroyed, `"replaced"` when another spell fires, `"cancelled"`, and
 `"interrupted"` on `pause()`. An upgraded Incendio ends as `"gone"` when its
@@ -91,13 +91,56 @@ fire burns out: the tracker polls its area actor every 100 ms from `Start`
 until then. A cast without a projectile never ends as `"gone"`. Callbacks run
 inside the hooks, on the game thread.
 
+#### Lumos
+
+| Moment | Signal | Time |
+| --- | --- | --- |
+| Lumos cast | `SetRightArmState(StartLumos, Lumos)`: the wand goes up | 0 |
+| Fires | `Start` on the `ALumosSpellTool`; `IsLumosActive()` still false | ~0.18 s |
+| Lit | `IsLumosActive()` true, `IsStopped()` false | ~0.05 s after `Start` |
+| Turned off (Lumos cast again) | `SetRightArmState(None, Lumos)`; `IsLumosActive()` false; no `Start` | 0 |
+
+So a `fired` with `"lumos"` is always a turn-on; turning it off fires nothing
+and the tracker keeps the Lumos cast until the next spell replaces it. Casting
+another spell puts the game's own light out at once.
+
+`DeactivateLumos`, `CancelCurrentSpell`, `ActivateLumos` (priority 1, the tool
+as instigator) keeps the light on through other casts (`IsStopped()` true,
+`IsLumosActive()` true) and runs no `Start`, but the cancel clears the Lumos
+arm request: after the next cast the wand is put away with the light on.
+`SetRightArmState(StartLumos, Lumos, true)` holds it up again, through casts,
+until `SetRightArmState(None, Lumos, true)`.
+
+Casting Lumos at such a kept light puts it out without `Start` or any arm
+call. Its only hookable call is `WandTool:OnActiveSpellToolChanged` with the
+Lumos tool as `ActivatedSpell`; 10–20 ms later `GetLumosActor()` returns
+nothing, while `IsLumosActive()` stays true and the wand stays up until the
+Lumos request is cleared. A light is on only while `IsLumosActive()` is true
+and the light actor exists. Spell set previews also switch to the Lumos tool
+(and straight back) but leave the light on, so a switch alone is no cast.
+
+QuickUtils (a Blueprint quick-cast mod) casts Lumos with
+`WandTool:ActivateSpellTool(DA_LumosSpellRecord, false)` and
+`WandTool:CastActiveSpell`, and presses no spell button: `OnSpell_Pressed`
+does not run for it.
+
 ### Wand
 
+The right arm takes one request per priority (`ERightArmPriority`) with
+`Biped_Character:SetRightArmState(InState, InPriority, bBroadcastChange)`; the
+highest-priority request wins and `GetRightArmState(InPriority)` reads each
+(`None`, 0, gives the winning one). The game keeps the wand's idle state
+(`HoldItem`, `UnEquipItem`, `HideItem`) at `LowestPriority` (1), the raise
+before a cast at `UpperBodyAnticipation` (4), Lumos at `Lumos` (8) and the
+cast itself at `FullBodyUsage` (9); a request outlasts the higher ones and
+takes the arm back when they end.
+
 `WandTool:OnRightArmStateChanged(RightArmState, LastRightArmState)` runs the
-moment the right arm changes, for every character's wand.
+moment the winning state changes, for every character's wand.
 
 | State | Value | What you see |
 | --- | --- | --- |
+| `StartLumos` | 14 | wand held up in front, as for Lumos |
 | `PlayHeavyAniticipationMotion` | 12 | right hand up, wand raised |
 | `StopMotionOnly` | 7 | casting a spell |
 | `HoldItem` | 3 | wand held low at the side |
@@ -105,18 +148,24 @@ moment the right arm changes, for every character's wand.
 | `HideItem` | 9 | wand put away |
 
 Raising the wand goes to 12; lowering it goes 12 → 2 → 9, or 12 → 3 when it
-stays in hand. A cast goes to 7, then back to 12 or 3.
+stays in hand. A cast goes to 7, then back to 12 or 3, or to the Lumos request.
+
+Holding the cast button raises the wand with a request at
+`UpperBodyAnticipation` (`SetRightArmState(PlayHeavyAniticipationMotion, 4)`),
+cleared with `None` on release. While Lumos holds the wand up at its higher
+priority the arm state stays 14, so the raise shows only in that request.
 
 `hogwarts.wand` (`shared/src/hogwarts/wand.lua`) reports only the player's
-wand and skips repeated states:
+wand and arm, and skips repeated states:
 
 ```lua
 local Wand = require("hogwarts.wand")
 
 local unsubscribe = Wand.subscribe({
-	changed = function(state, last) end, -- Wand.State.RAISED, CASTING, HOLD, UNEQUIP, HIDDEN
+	changed = function(state, last) end, -- Wand.State.RAISED, CASTING, HOLD, UNEQUIP, HIDDEN, or 14 (Lumos)
+	raised = function(raised) end, -- the cast button raised or lowered the wand
 })
-Wand.isRaised()
+Wand.isRaised() -- the wand is raised for a cast, also under Lumos
 Wand.state() -- nil until the first change after the hook is installed
 ```
 

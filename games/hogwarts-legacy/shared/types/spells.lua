@@ -140,3 +140,25 @@ local AMunitionType_Base = {}
 ---Seconds the projectile has left to live.
 ---@return float
 function AMunitionType_Base:GetRemainingLifeTime() end
+
+---The Lumos spell tool (`BP_LumosSpell_C`). `Start` runs ~0.18 s after a
+---turn-on press and not when Lumos is turned off.
+---@class ALumosSpellTool
+local ALumosSpellTool = {}
+
+---True while the light is on; turns true ~0.05 s after `Start`.
+---@return boolean
+function ALumosSpellTool:IsLumosActive() end
+
+---Lights it at `Priority` for `InInstigator` without a cast and runs no
+---`Start`. Called with 1 and the tool itself after `DeactivateLumos` and
+---`WandTool:CancelCurrentSpell`, the light stays on through other casts.
+---@param Priority EStandardManagedPriority
+---@param InInstigator UObject
+function ALumosSpellTool:ActivateLumos(Priority, InInstigator) end
+
+---The light's actor while the light is on, nil once it is out. Casting Lumos
+---at a light kept with `ActivateLumos` removes it while `IsLumosActive()`
+---stays true.
+---@return ALumosEmberActor
+function ALumosSpellTool:GetLumosActor() end

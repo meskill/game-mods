@@ -50,6 +50,7 @@ end
 
 ---@class HogwartsSpellCast
 ---@field name string Lowercased `DatabaseName`, e.g. "incendio".
+---@field spell ASpellTool The spell tool that fired the cast, e.g. an `ALumosSpellTool` for "lumos".
 
 ---Callbacks run inside the hooks, on the game thread, in event order.
 ---@class HogwartsSpellListener
@@ -199,7 +200,7 @@ function Tracker:started(spell)
 		return
 	end
 	self:finish("replaced")
-	local cast = { name = name }
+	local cast = { name = name, spell = spell }
 	self.cast, self.castSpell, self.launched, self.impacted = cast, spell:GetAddress(), false, false
 	local watch = spell:IsA(INCENDIO_CLASS) and spell:HasUpgradedMechanics()
 	if self.listener.fired then

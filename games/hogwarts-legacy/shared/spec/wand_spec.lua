@@ -1,5 +1,8 @@
 local CHANGED = "/Script/Phoenix.WandTool:OnRightArmStateChanged"
+local REQUESTED = "/Script/Phoenix.Biped_Character:SetRightArmState"
 local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
+-- ERightArmPriority values.
+local ANTICIPATION, LUMOS = 4, 8
 
 local function valid()
 	return true
@@ -52,6 +55,11 @@ describe("hogwarts.wand", function()
 		hooks[CHANGED](param(wand), param(state), param(last))
 	end
 
+	---Runs the hook as the game would for an arm request of `character`.
+	local function request(character, state, priority)
+		hooks[REQUESTED](param(character), param(state), param(priority), param(true))
+	end
+
 	---Subscribes a listener recording its changes as "last->state".
 	local function recorded()
 		local events = {}
@@ -63,19 +71,43 @@ describe("hogwarts.wand", function()
 		return events, unsubscribe
 	end
 
-	it("reports the player's arm changes once each, and whether the wand is raised", function()
+	it("reports the player's arm changes once each", function()
 		local events = recorded()
 		assert.is_nil(Wand.state())
-		assert.is_false(Wand.isRaised())
 
 		change(playerWand, Wand.State.RAISED, Wand.State.HIDDEN)
-		assert.is_true(Wand.isRaised())
 		change(playerWand, Wand.State.UNEQUIP, Wand.State.RAISED)
 		change(playerWand, Wand.State.UNEQUIP, Wand.State.UNEQUIP)
 
-		assert.is_false(Wand.isRaised())
 		assert.equals(Wand.State.UNEQUIP, Wand.state())
 		assert.same({ "nil->12", "12->2" }, events)
+	end)
+
+	it("reports the wand raised for a cast even while Lumos decides the arm", function()
+		local events = {}
+		Wand.subscribe({
+			raised = function(raised)
+				events[#events + 1] = raised
+			end,
+		})
+		assert.is_false(Wand.isRaised())
+
+		-- Lumos holds the wand up at a higher priority; the arm state stays 14.
+		request(player, 14, LUMOS)
+		change(playerWand, 14, Wand.State.HIDDEN)
+		request(player, Wand.State.RAISED, ANTICIPATION)
+		request(player, Wand.State.RAISED, ANTICIPATION)
+		assert.is_true(Wand.isRaised())
+
+		request(player, 0, ANTICIPATION)
+		assert.is_false(Wand.isRaised())
+		assert.same({ true, false }, events)
+	end)
+
+	it("ignores other characters' raise requests", function()
+		recorded()
+		request(actor("/Script/Phoenix.Biped_Character"), Wand.State.RAISED, ANTICIPATION)
+		assert.is_false(Wand.isRaised())
 	end)
 
 	it("ignores other characters' wands", function()

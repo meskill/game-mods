@@ -120,6 +120,20 @@ describe("hogwarts.spells", function()
 		assert.same({ "fired accio", "ended accio gone" }, events)
 	end)
 
+	it("hands the listener the spell tool that fired the cast", function()
+		local tracker = Spells.tracker(error)
+		local spells = {}
+		tracker:listen({
+			fired = function(cast)
+				spells[#spells + 1] = cast.spell
+			end,
+		})
+		tracker:resume()
+		local lumos = spellTool("Lumos", 0x30, PLAYER)
+		call("Start", lumos)
+		assert.equals(lumos, spells[1])
+	end)
+
 	it("keeps a projectile cast past its stop until the projectile is destroyed", function()
 		local _, events = recorded()
 		local diffindo = spellTool("Diffindo", 0x30, PLAYER)

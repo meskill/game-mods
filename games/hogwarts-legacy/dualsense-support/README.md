@@ -16,13 +16,16 @@ game every 100 ms on the game thread:
    only. Broom hooks report mounting and dismounting; the boost meter is read
    only while riding.
 3. **Otherwise R2 follows the wand.** It uses the baseline effect and switches to
-   a light vibration while the wand is raised (`hogwarts.wand`: right hand up
-   with the wand), applied the moment the arm changes; spell hooks report casts.
+   a light vibration while R2 holds the wand raised for a cast
+   (`hogwarts.wand`, also while Lumos holds the wand up), applied the moment it
+   changes; spell hooks report casts.
 
 Spell casts come from hooks on `SpellTool` (`hogwarts.spells`), not from
 sampling: R2 switches to the spell's fire effect (`spells.lua`) inside the
-`Start` hook, and back when the cast ends. Casts are reported only while the
-last sample found the player on foot.
+`Start` hook, and back when the cast ends. A cast without a projectile, such as
+Lumos, never ends until the next spell replaces it, so its effect has a
+`duration` (Lumos: a 0.3 s pulse) after which the next poll restores the wand's
+effect. Casts are reported only while the last sample found the player on foot.
 
 ## Build and debug
 
