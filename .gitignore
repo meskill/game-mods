@@ -1,5 +1,6 @@
 /.vscode/*
 !/.vscode/settings.json
+/.dist-overrides.toml
 /vendor/
 /luarocks.bat
 /lua.bat

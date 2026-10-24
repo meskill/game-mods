@@ -56,3 +56,5 @@ dist                                           # the mod containing the current 
 dist -g hogwarts-legacy                        # every mod of the game
 dist -g hogwarts-legacy -m dualsense-support   # one mod
 ```
+
+To deploy straight into a game installation, copy `.dist-overrides.example.toml` to `.dist-overrides.toml` (local, ignored by git) and set each game's installation directory.

@@ -21,6 +21,9 @@ game = "hogwarts-legacy"     # -g
 type = "ue4ss"               # a key of BUILD_TYPES in dist.nu
 ```
 
+To deploy straight into a game installation, list it in `.dist-overrides.toml`
+(see `.dist-overrides.example.toml`).
+
 ## Pipeline
 
 Each selected mod builds in its own directory `dist/.tmp/<game>-<name>-<random>`
@@ -37,7 +40,7 @@ flowchart LR
 1. `dist.nu` creates `tmp` and calls the mod's build type with `(mod, tmp)`.
 2. The build type chains steps (modules such as `lux.nu`) and fills `tmp/out` with the
    mod's final layout.
-3. `dist.nu` copies `tmp/out` into `dist/<game>/<name>`, changed files only:
+3. `dist.nu` copies `tmp/out` into `dist/<game>/<name>` (or the override directory), changed files only:
    identical files keep their timestamps, files the build no longer produces
    are not deleted.
 4. `tmp` is kept for inspection. Each build first removes the directories in

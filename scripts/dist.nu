@@ -1,4 +1,5 @@
-# Builds mods declared by games/**/mod.toml into dist/<game>/<name>.
+# Builds mods declared by games/**/mod.toml into dist/<game>/<name>, or into the
+# game's installation when .dist-overrides.toml maps the game to it.
 #
 #   dist                                          # the mod containing the cwd
 #   dist -g hogwarts-legacy                      # every mod of the game
@@ -15,10 +16,22 @@ use dist/ue4ss.nu
 # Workspace root, independent of the directory dist is run from.
 const ROOT = path self | path dirname | path dirname
 
-# Build types by mod.toml `build.type`: each is called with (mod, tmp) and
-# fills <tmp>/out with the mod's dist layout, using its module in scripts/dist/.
+# Build directories in dist/.tmp older than this are removed at the next build.
+const TMP_MAX_AGE = 1day
+
+# Local file mapping games to their installation directories.
+const OVERRIDES_FILE = '.dist-overrides.toml'
+
+# Build types by mod.toml `build.type`, each backed by its module in
+# scripts/dist/:
+#   build:    called with (mod, tmp); fills <tmp>/out with the mod's layout
+#   mods_dir: called with a game installation directory; returns the directory
+#             that receives this type's mods there, or null if none is found
 let BUILD_TYPES = {
-    ue4ss: {|mod, tmp| ue4ss build $mod $tmp }
+    ue4ss: {
+        build: {|mod, tmp| ue4ss build $mod $tmp }
+        mods_dir: {|game_dir| ue4ss mods-dir $game_dir }
+    }
 }
 
 # Builds mods into dist/<game>/<name>. Without flags, builds the mod whose
@@ -52,20 +65,57 @@ def main [
 
     cd $root
     for mod in $selected {
-        print $"Building ($mod.game)/($mod.name) \(($mod.build.type)\)"
-        let output = $root | path join dist $mod.game $mod.name
+        print ""
+        block $"(ansi cyan_bold) ($mod.game)/($mod.name) (ansi reset)(ansi cyan)\(($mod.build.type)\)(ansi reset)" cyan
+        let output = output-dir $root $mod
+        print $"(ansi blue)→ deploying to ($output)(ansi reset)"
+        rule dark_gray
         let written = build $root $mod $output
+        rule dark_gray
         if ($written | is-empty) {
-            print $"($output): up to date"
+            print $"(ansi green)✓ up to date(ansi reset) ($output)"
         } else {
-            print $"($output): updated ($written | length) files"
-            $written | each { print $"  ($in)" } | ignore
+            print $"(ansi green)✓ updated ($written | length) files(ansi reset) in ($output)"
+            $written | each { print $"  (ansi dark_gray)•(ansi reset) ($in)" } | ignore
         }
+        rule cyan
     }
 }
 
-# Build directories in dist/.tmp older than this are removed at the next build.
-const TMP_MAX_AGE = 1day
+# Prints `content` between two horizontal lines in `color`.
+def block [content: string, color: string] {
+    rule $color
+    print $content
+    rule $color
+}
+
+# Prints a horizontal line across the terminal in `color`.
+def rule [color: string] {
+    let width = (term size).columns | default 80
+    print $"(ansi $color)('─' | fill --character '─' --width $width)(ansi reset)"
+}
+
+# Where `mod` is deployed: dist/<game>/<name>, or <mods dir>/<name> when
+# OVERRIDES_FILE maps its game to an installation (relative paths resolve from
+# the workspace root). An override whose installation or mods directory is not
+# found is an error, so the mod is never silently built elsewhere.
+def output-dir [root: path, mod: record]: nothing -> path {
+    let fallback = $root | path join dist $mod.game $mod.name
+    let file = $root | path join $OVERRIDES_FILE
+    if not ($file | path exists) { return $fallback }
+    let game_dir = open $file | get -o $mod.game
+    if $game_dir == null { return $fallback }
+    let game_dir = $root | path join $game_dir | path expand
+    if not ($game_dir | path exists) {
+        error make --unspanned { msg: $"($OVERRIDES_FILE): ($mod.game) directory not found: ($game_dir)" }
+    }
+    let mods_dir = do ($BUILD_TYPES | get $mod.build.type).mods_dir $game_dir
+    if $mods_dir == null {
+        error make --unspanned { msg: $"($OVERRIDES_FILE): no ($mod.build.type) mods directory found in ($game_dir) for ($mod.game)" }
+    }
+    print $"(ansi blue)→ ($OVERRIDES_FILE): ($mod.game) installation ($game_dir), ($mod.build.type) mods in ($mods_dir)(ansi reset)"
+    $mods_dir | path join $mod.name
+}
 
 # Runs the mod's build type in a fresh dist/.tmp/<build> directory, then copies
 # its <tmp>/out into `output`, changed files only. Returns the paths (relative
@@ -80,7 +130,7 @@ def build [root: path, mod: record, output: path]: nothing -> list<string> {
     | ignore
     let tmp = mktemp --directory --tmpdir-path $tmp_root $"($mod.game)-($mod.name)-XXXXXX"
 
-    do ($BUILD_TYPES | get $mod.build.type) $mod $tmp
+    do ($BUILD_TYPES | get $mod.build.type).build $mod $tmp
 
     sync ($tmp | path join out) $output
 }

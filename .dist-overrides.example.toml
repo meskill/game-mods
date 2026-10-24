@@ -1,0 +1,6 @@
+# Copy to .dist-overrides.toml (ignored by git) and adjust the paths to deploy
+# mods straight into your game installations with `dist`.
+
+# ue4ss mods land in Phoenix\Binaries\Win64\ue4ss\Mods\<name>; enable them in
+# that Mods\mods.txt, e.g. `dualsense-support : 1`.
+hogwarts-legacy = 'C:\Program Files (x86)\Steam\steamapps\common\Hogwarts Legacy'
