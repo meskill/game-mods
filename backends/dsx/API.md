@@ -122,24 +122,90 @@ spelling), `VibratePulseAB` 16.
 Upstream's helper writes its raw values from index 3, overwriting
 `valueMode`; the layout above is what the packet should contain.
 
-## Other requests
+## GetDSXStatus (0)
+
+```text
+[]
+```
+
+Requests a [status document](#status-document). Takes no arguments.
+Discovers controllers and their capabilities, and doubles as a liveness
+check. Every datagram is answered with the same document, so this
+instruction only matters when nothing else is sent.
 
 ```json
 {"instructions":[{"type":0,"parameters":[]}]}
 ```
 
-`GetDSXStatus` discovers controllers and their capabilities, and doubles as
-a liveness check.
+## RGBUpdate (2)
 
-`TriggerThreshold` `[controller, trigger, threshold]` — `threshold` `0–255`,
-how far the trigger travels before the emulated controller reports it
-pressed.
+```text
+[controller, red, green, blue, brightness]
+```
 
-`RGBUpdate` `[controller, red, green, blue, brightness]` — all `0–255`,
-lightbar; needs `IsSupportLightBar`.
+Sets the lightbar colour. Needs `IsSupportLightBar`.
 
-`PlayerLEDNewRevision` `[controller, playerLayout]` — needs
-`IsSupportPlayerLED`.
+| Argument | Range | Meaning |
+| --- | --- | --- |
+| `red` | `0–255` | red channel |
+| `green` | `0–255` | green channel |
+| `blue` | `0–255` | blue channel |
+| `brightness` | `0–255` | lightbar brightness |
+
+White at full brightness on controller 0:
+
+```json
+{"instructions":[{"type":2,"parameters":[0,255,255,255,255]}]}
+```
+
+## TriggerThreshold (4)
+
+```text
+[controller, trigger, threshold]
+```
+
+Sets how far the trigger travels before the emulated controller reports it
+pressed. `trigger` as in [TriggerUpdate](#triggerupdate-1); `threshold`
+`0–255`.
+
+Both triggers at threshold 0 on controller 0:
+
+```json
+{"instructions":[
+  {"type":4,"parameters":[0,1,0]},
+  {"type":4,"parameters":[0,2,0]}
+]}
+```
+
+## MicLED (5)
+
+```text
+[controller, micMode]
+```
+
+Sets the microphone mute LED. Needs `IsSupportMicLED`.
+
+| `micMode` | ID |
+| --- | --: |
+| `On` | 0 |
+| `Pulse` | 1 |
+| `Off` | 2 |
+
+Pulsing mic LED on controller 0:
+
+```json
+{"instructions":[{"type":5,"parameters":[0,1]}]}
+```
+
+## PlayerLEDNewRevision (6)
+
+```text
+[controller, playerLayout]
+```
+
+Sets the five player-indicator LEDs to a fixed layout. Needs
+`IsSupportPlayerLED`. Individual LEDs cannot be addressed; only the
+layouts below exist.
 
 | `playerLayout` | ID | LEDs |
 | --- | --: | --- |
@@ -147,16 +213,29 @@ lightbar; needs `IsSupportLightBar`.
 | `Two` | 1 | `- x-x -` |
 | `Three` | 2 | `x -x- x` |
 | `Four` | 3 | `x x-x x` |
-| `Five` | 4 | `x xxx x` |
+| `Five` | 4 | `x xxx x` (also all on) |
 | `AllOff` | 5 | none |
 
-`MicLED` `[controller, micMode]` — `On` 0, `Pulse` 1, `Off` 2; needs
-`IsSupportMicLED`.
+Player 1 on controller 0:
 
-`ResetToUserSettings` `[controller]` discards every UDP modification and
-re-applies the controller's DSX profile — triggers, lightbar and LEDs
-together. This is how a client hands the controller back; `OFF` only
-disables trigger effects.
+```json
+{"instructions":[{"type":6,"parameters":[0,0]}]}
+```
+
+## ResetToUserSettings (7)
+
+```text
+[controller]
+```
+
+Discards every UDP modification on that controller and re-applies its DSX
+profile — triggers, lightbar and LEDs together. This is how a
+client hands the controller back; `OFF` only disables trigger effects.
+Send it once per controller the client touched.
+
+```json
+{"instructions":[{"type":7,"parameters":[0]}]}
+```
 
 ## Status document
 

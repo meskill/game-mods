@@ -1,6 +1,7 @@
 -- Protocol facts only a live DSX can answer for. Needs DSX running with its
 -- UDP server enabled; found the way the mod finds it (port file, else 6969).
--- Skipped when CI is set. Client behaviour is covered in server_spec.lua.
+-- Skipped when CI is set or no controller is found.
+-- Client behaviour is covered in server_spec.lua.
 --
 -- Effects are not asserted: DSX has no error channel and no read-back.
 -- Judge them by hand with examples/adaptive_triggers.lua.
