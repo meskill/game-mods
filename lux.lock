@@ -13,7 +13,7 @@
         },
         "hashes": {
           "rockspec": "sha256-07vlrm3dWrrM8TyZCzVRx8we+y/ryymVG17EeL8vzqM=",
-          "source": "sha256-1TfXQ+nSPVa3wK+x8RfGXUQT8efnkK/6hNpNxla4IpM="
+          "source": "sha256-YyTDdbt7ZEMZvTLWnpIenQ7ETn1vjT6fphDaMgQ2luc="
         }
       },
       "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad": {
@@ -56,21 +56,21 @@
         },
         "hashes": {
           "rockspec": "sha256-zpP1jxFU5THDtKssfLv9pWZ9EBMIPGWryZIR+S8aXJU=",
-          "source": "sha256-8dj1ofYR7DiI4foKR+SNMwVk7VfV+onMns6mxxGLjJo="
+          "source": "sha256-hzadQXfkpkF/MEP5gse0BtSCRa0U6e6IMqxen6yU3kQ="
         }
       },
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51": {
         "name": "ue4ss",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\shared\\\\../../../engines/ue4ss\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\shared\\\\../../../engines/ue4ss/helpers\",\n}\nbuild = {\n  type = \"source\"\n}",
         "source_url": {
           "type": "file",
-          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\shared\\../../../engines/ue4ss"
+          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\shared\\../../../engines/ue4ss/helpers"
         },
         "hashes": {
-          "rockspec": "sha256-uNT2B7b1QhGdxxdlaYsYrmlIEAVJHuGPaJFwWS5/OK0=",
-          "source": "sha256-uJYF4RSsnaZTxAmOh6aVX7U4Fezc3Tyjom44Ezxsllw="
+          "rockspec": "sha256-REGItgAkT8DleW+56m4tJoTUfp3EpZPuziVKUW53gnM=",
+          "source": "sha256-tTm+2xubMtHa3CWPEwsJCryp8FFkTOFKz6hvAFzLA8c="
         }
       },
       "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9": {

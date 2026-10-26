@@ -145,7 +145,7 @@ and DSX replies.
 The player controller is cached while valid; pawn changes are still checked on
 each gameplay poll. If the controller disappears during travel, rediscovery is
 limited to once per second, because each lookup scans every PlayerController.
-Lookups use the shared `ue4ss` package (`engines/ue4ss`), not the
+Lookups use the shared `ue4ss` package (`engines/ue4ss/helpers`), not the
 installation's UEHelpers, whose behaviour differs between UE4SS versions.
 
 ### Spell identification

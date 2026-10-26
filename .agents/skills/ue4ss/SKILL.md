@@ -1,11 +1,11 @@
 ---
 name: ue4ss
-description: Use when writing, reviewing, debugging, or deploying UE4SS mods in Lua or C++, including game integrations under games/, the shared helpers in engines/ue4ss, Unreal object hooks, API discovery, and type generation.
+description: Use when writing, reviewing, debugging, or deploying UE4SS mods in Lua or C++, including game integrations under games/, the shared helpers in engines/ue4ss/helpers, Unreal object hooks, API discovery, and type generation.
 ---
 
 # UE4SS mod development
 
-UE4SS exposes Unreal Engine objects to Lua and native C++ mods; these are not ordinary Unreal Editor plugins. Start with the target game's UE4SS version and existing integration under `games/` (repository-relative); shared helpers and UE4SS types live in `engines/ue4ss/`. Match documentation, types, and native SDK to that version; current online examples can differ from released builds.
+UE4SS exposes Unreal Engine objects to Lua and native C++ mods; these are not ordinary Unreal Editor plugins. Start with the target game's UE4SS version and existing integration under `games/` (repository-relative); shared helpers live in `engines/ue4ss/helpers/` and UE4SS types in `engines/ue4ss/types/`. Match documentation, types, and native SDK to that version; current online examples can differ from released builds.
 
 For project tooling, consult `CONTRIBUTING.md`; also use the `lua` skill for Lua work and Lux commands. For UE4SS setup and compatibility, start at the [official documentation](https://docs.ue4ss.com/), rather than duplicating installation instructions here.
 

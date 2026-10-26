@@ -21,7 +21,7 @@ path = "../../../core/net"
 version = "0.1.0"
 
 [dependencies.ue4ss]
-path = "../../../engines/ue4ss"
+path = "../../../engines/ue4ss/helpers"
 version = "0.1.0"
 
 [build]

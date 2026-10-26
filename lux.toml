@@ -11,7 +11,7 @@ labels = [ "game" ]
 members = [
     "glob:core/*",
     "glob:backends/*",
-    "glob:engines/*",
+    "glob:engines/*/*",
     # lx check reports only members' src/ directories, so vendored type stubs in
     # engines/ue4ss/types stay out of the report; .luarc.json lists them in
     # workspace.library.

@@ -1,7 +1,7 @@
-# Downloads the UE4SS type files for the [ue4ss] revision in lux.toml into types/,
-# overwriting them, and prints their sha256.
+# Downloads the UE4SS type files for the [ue4ss] revision in helpers/lux.toml
+# into types/, overwriting them, and prints their sha256.
 let root = $env.FILE_PWD | path dirname
-let upstream = open ($root | path join lux.toml) | get ue4ss
+let upstream = open ($root | path join helpers lux.toml) | get ue4ss
 let repo = $upstream.repository | url parse | get path | str trim --char '/'
 
 let files = [

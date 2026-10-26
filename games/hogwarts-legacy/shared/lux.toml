@@ -18,7 +18,7 @@ lua = "5.4"
 #   Dumped:  2026-09-12; 1596 files, 16411 class declarations
 
 [dependencies.ue4ss]
-path = "../../../engines/ue4ss"
+path = "../../../engines/ue4ss/helpers"
 version = "0.1.0"
 
 [build]
