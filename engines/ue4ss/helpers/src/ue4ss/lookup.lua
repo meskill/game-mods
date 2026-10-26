@@ -9,10 +9,15 @@
 local Lookup = {}
 Lookup.__index = Lookup
 
+---False also when UE4SS rejects the cached wrapper itself, as it does after
+---the object behind it is gone (seen in Hogwarts Legacy after 2 minutes).
 ---@param object UObject
 ---@return boolean
 local function isValid(object)
-	return object:IsValid()
+	local ok, valid = pcall(function()
+		return object:IsValid()
+	end)
+	return ok and valid == true
 end
 
 ---@param interval number Minimum seconds between searches.

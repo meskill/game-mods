@@ -1,0 +1,21 @@
+package = "ue4ss-devtools"
+version = "0.1.0"
+lua = "5.4"
+
+# Development tool: runs Lua sent to a running game and logs calls, values and
+# recordings with timestamps (see README.md). Never a dependency of a shipped
+# mod: `lx dist` copies every dependency's modules into the mod.
+
+[dependencies.ue4ss]
+path = "../helpers"
+version = "0.1.0"
+
+[dependencies.devtools]
+path = "../../../core/devtools"
+version = "0.1.0"
+
+[build]
+type = "builtin"
+
+[test]
+type = "busted"

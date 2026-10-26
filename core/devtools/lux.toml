@@ -1,0 +1,15 @@
+package = "devtools"
+version = "0.1.0"
+lua = "5.4"
+
+# Engine-independent parts of development tools such as engines/ue4ss/devtools:
+# timestamped log, value formatting, running a script in a given environment,
+# tracking of values and calls. Never a dependency of a shipped mod.
+
+[dependencies]
+
+[build]
+type = "builtin"
+
+[test]
+type = "busted"

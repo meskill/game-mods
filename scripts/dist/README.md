@@ -38,11 +38,12 @@ flowchart LR
 ```
 
 1. `dist.nu` creates `tmp` and calls the mod's build type with `(mod, tmp)`.
-2. The build type chains steps (modules such as `lux.nu`) and fills `tmp/out` with the
-   mod's final layout.
+2. The build type chains steps (modules such as `lux.nu`), fills `tmp/out` with the
+   mod's final layout, and returns paths it may have deployed before but no
+   longer produces.
 3. `dist.nu` copies `tmp/out` into `dist/<game>/<name>` (or the override directory), changed files only:
-   identical files keep their timestamps, files the build no longer produces
-   are not deleted.
+   identical files keep their timestamps. Of the files the build no longer
+   produces, only those the build type returned are deleted.
 4. `tmp` is kept for inspection. Each build first removes the directories in
    `dist/.tmp` last modified more than `TMP_MAX_AGE` (1 day) ago.
 
@@ -69,4 +70,9 @@ and reuses it; delete `dist/.lua` to rebuild it.
 ## Build types
 
 - `ue4ss`: runs `lux build` on the mod's directory and copies `lux-out` into
-  `out/Scripts`, where UE4SS loads `main.lua` and resolves `require()`.
+  `out/Scripts`, where UE4SS loads `main.lua` and resolves `require()`. A
+  devtools mod's local `src/experiment-local.lua`, which the VCS ignores and Lux
+  therefore skips, is copied too, with `${EXPERIMENT_DATA_DIR}` replaced by the
+  mod's `experiment-data/` (its `shots/` deleted on every build), where devtools
+  writes its log and screenshots. Without the local file, its earlier copy is
+  removed from the deployed mod, so it does not run a deleted experiment.

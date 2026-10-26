@@ -18,6 +18,7 @@
       "${3rd}/luassert/library",
       ".lux/5.4/2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260-net@0.1.0-1/src",
       ".lux/5.4/44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad-dkjson@2.11-1/src",
+      ".lux/5.4/6391ec3d20ef9d5c55ab9eb9321dd02f684cb711340bb32b9913f247476dcae8-devtools@0.1.0-1/src",
       ".lux/5.4/7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada-luasocket@3.1.0-1/src",
       ".lux/5.4/c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a-hogwarts-legacy@0.1.0-1/src",
       ".lux/5.4/f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51-ue4ss@0.1.0-1/src",

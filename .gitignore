@@ -8,3 +8,6 @@
 .lux
 /.luarocks
 /dist/
+# run local experiments
+experiment-local.lua
+experiment-data/

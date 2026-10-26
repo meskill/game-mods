@@ -2,8 +2,9 @@
 
 Integration with the [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) engine.
 
-- provide proper typings for UE4SS API controlled by the `[ue4ss]` section in `./lux.toml`
-- provide set of helpers to work with UE4SS API
+- provide proper typings for UE4SS API controlled by the `[ue4ss]` section in `./helpers/lux.toml`
+- provide set of helpers to work with UE4SS API (`./helpers`)
+- provide a development mod to run Lua in a running game and log calls with timestamps (`./devtools`, never shipped)
 
 ## Versioning
 

@@ -24,7 +24,9 @@ const OVERRIDES_FILE = '.dist-overrides.toml'
 
 # Build types by mod.toml `build.type`, each backed by its module in
 # scripts/dist/:
-#   build:    called with (mod, tmp); fills <tmp>/out with the mod's layout
+#   build:    called with (mod, tmp); fills <tmp>/out with the mod's layout and
+#             returns paths (relative to out) to remove from the output unless
+#             it produced them this time
 #   mods_dir: called with a game installation directory; returns the directory
 #             that receives this type's mods there, or null if none is found
 let BUILD_TYPES = {
@@ -118,9 +120,10 @@ def output-dir [root: path, mod: record]: nothing -> path {
 }
 
 # Runs the mod's build type in a fresh dist/.tmp/<build> directory, then copies
-# its <tmp>/out into `output`, changed files only. Returns the paths (relative
-# to `output`) that were written. Build directories are kept for inspection;
-# ones last modified more than TMP_MAX_AGE ago are removed first.
+# its <tmp>/out into `output`, changed files only, and removes the paths the
+# build type returned that it did not produce. Returns the paths (relative to
+# `output`) that were written or removed. Build directories are kept for
+# inspection; ones last modified more than TMP_MAX_AGE ago are removed first.
 def build [root: path, mod: record, output: path]: nothing -> list<string> {
     let tmp_root = $root | path join dist .tmp
     mkdir $tmp_root
@@ -130,9 +133,17 @@ def build [root: path, mod: record, output: path]: nothing -> list<string> {
     | ignore
     let tmp = mktemp --directory --tmpdir-path $tmp_root $"($mod.game)-($mod.name)-XXXXXX"
 
-    do ($BUILD_TYPES | get $mod.build.type).build $mod $tmp
+    let stale = do ($BUILD_TYPES | get $mod.build.type).build $mod $tmp
+    let out = $tmp | path join out
 
-    sync ($tmp | path join out) $output
+    let written = sync $out $output
+    let removed = $stale
+    | where {|file| not ($out | path join $file | path exists) and ($output | path join $file | path exists) }
+    | each {|file|
+        rm ($output | path join $file)
+        $"($file) \(removed\)"
+    }
+    $written | append $removed
 }
 
 # Copies files from `source` into `target` whose content differs or that are
