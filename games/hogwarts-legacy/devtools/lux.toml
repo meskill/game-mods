@@ -1,0 +1,25 @@
+package = "hogwarts-legacy-devtools"
+version = "0.1.0"
+lua = "5.4"
+
+# Development mod for Hogwarts Legacy: engines/ue4ss/devtools plus the
+# optional src/experiment.lua it runs on each load. Never ship it.
+
+[dependencies.ue4ss-devtools]
+path = "../../../engines/ue4ss/devtools"
+version = "0.1.0"
+
+# Transitive dependencies required by Lux dist.
+[dependencies.devtools]
+path = "../../../core/devtools"
+version = "0.1.0"
+
+[dependencies.ue4ss]
+path = "../../../engines/ue4ss/helpers"
+version = "0.1.0"
+
+[build]
+type = "builtin"
+
+[test]
+type = "busted"

@@ -59,6 +59,20 @@
           "source": "sha256-hEmKZavviipO+3dTZpHywpvkU/Ka4b0gFXTxrt67zTE="
         }
       },
+      "af221ddf70e7e3dd0e6684630b123219d24ac28247432c1633ef0e1e42a141a1": {
+        "name": "ue4ss-devtools",
+        "version": "0.1.0-1",
+        "constraint": "==0.1.0",
+        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss-devtools\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\devtools\\\\../../../engines/ue4ss/devtools\",\n}\nbuild = {\n  type = \"source\"\n}",
+        "source_url": {
+          "type": "file",
+          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\devtools\\../../../engines/ue4ss/devtools"
+        },
+        "hashes": {
+          "rockspec": "sha256-TgLIOpL5zuh/bloO6Onz4xPObsQkM9lOg3NF4BAaxd4=",
+          "source": "sha256-+1nzdMz9YtD9HP/t3q2D6rNAopqhFh8lbzS7vC07ktE="
+        }
+      },
       "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a": {
         "name": "hogwarts-legacy",
         "version": "0.1.0-1",
@@ -107,6 +121,7 @@
       "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
       "6391ec3d20ef9d5c55ab9eb9321dd02f684cb711340bb32b9913f247476dcae8",
       "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada",
+      "af221ddf70e7e3dd0e6684630b123219d24ac28247432c1633ef0e1e42a141a1",
       "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a",
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51",
       "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9"
