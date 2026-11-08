@@ -1,8 +1,8 @@
 -- Which signals mark game menus opening and closing. Hooks the candidate
 -- functions (every UIManager function but getters, and screen close
--- functions) and follows the pause states every 100 ms. In the game: start tracking,
--- open and close the pause menu and the map (a mark between), stop; the report
--- lists what fired and changed.
+-- functions) and follows the pause states every 100 ms. In the game: start
+-- tracking, open and close menus (a mark after each), stop; the report lists
+-- what fired and changed. Findings so far: games/hogwarts-legacy/README.md.
 
 -- Besides every UIManager function, hooked by class below.
 local HOOKS = {
