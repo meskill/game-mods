@@ -18,8 +18,9 @@
 -- The upgraded Incendio (`HasUpgradedMechanics()`) leaves a ring of fire: an
 -- area actor (`IncendioSpellTool.CurrentAOE`) spawned just after `Start` that
 -- burns about 0.75 s, until it stops ticking or its lifetime runs out. No hook
--- marks that, so for such a cast only the tracker polls the area actor every
--- FIRE_POLL_MS and ends the cast once it burns out, or after FIRE_MAX_POLLS.
+-- marks that, so the tracker's one game-thread loop, idle otherwise, checks the
+-- area actor every FIRE_POLL_MS while such a cast lasts and ends the cast once
+-- it burns out, or after FIRE_MAX_POLLS.
 -- The base Incendio leaves no fire and ends with its fireball.
 
 local Loop = require("ue4ss.loop")
@@ -65,7 +66,7 @@ end
 ---@field private castSpell integer Address of the spell tool that fired the cast.
 ---@field private launched boolean The cast fired a projectile.
 ---@field private impacted boolean The cast's impact has been reported.
----@field private fire? table Token of the running fire poll; replaced or cleared to stop it.
+---@field private fire? HogwartsSpellFire The upgraded Incendio cast waiting for its fire to burn out.
 local Tracker = {}
 Tracker.__index = Tracker
 
@@ -80,43 +81,39 @@ function Tracker:pause()
 	self:finish("interrupted")
 end
 
----Polls an upgraded Incendio's new area actor until it burns out, then ends
----the cast. Stops when the cast ends for any other reason.
+---@class HogwartsSpellFire
+---@field incendio AIncendioSpellTool
+---@field before integer Address of the area actor before the cast, or 0.
+---@field polls integer
+
+---Starts watching an upgraded Incendio's new area actor; see pollFire().
 ---@private
 ---@param incendio AIncendioSpellTool
 function Tracker:watchFire(incendio)
 	local before = incendio.CurrentAOE
-	local beforeAddress = before and before:IsValid() and before:GetAddress() or 0
-	local token, polls = {}, 0
-	self.fire = token
-	Loop.gameThread(FIRE_POLL_MS, function()
-		if self:fireStopped(token) then
-			return true
-		end
-		polls = polls + 1
-		local area = incendio:IsValid() and incendio.CurrentAOE or nil
-		local spawned = area ~= nil and area:IsValid() and area:GetAddress() ~= beforeAddress
-		---@cast area AMunitionType_AOE_MultiFX
-		local burnedOut = spawned and (not area:IsActorTickEnabled() or area:GetRemainingLifeTime() <= 0)
-		if burnedOut or polls >= FIRE_MAX_POLLS then
-			self:finish("gone")
-			return true
-		end
-		return false
-	end, function(message)
-		if self.log then
-			self.log("spell fire poll failed: " .. message)
-		end
-	end)
+	self.fire = {
+		incendio = incendio,
+		before = before and before:IsValid() and before:GetAddress() or 0,
+		polls = 0,
+	}
 end
 
----Whether the fire poll identified by `token` should stop: its cast ended or
----another poll replaced it.
+---Ends the watched Incendio cast once its new area actor burns out. Runs on
+---the tracker's loop; does nothing while no fire is watched.
 ---@private
----@param token table
----@return boolean
-function Tracker:fireStopped(token)
-	return self.fire ~= token
+function Tracker:pollFire()
+	local fire = self.fire
+	if not fire then
+		return
+	end
+	fire.polls = fire.polls + 1
+	local area = fire.incendio:IsValid() and fire.incendio.CurrentAOE or nil
+	local spawned = area ~= nil and area:IsValid() and area:GetAddress() ~= fire.before
+	---@cast area AMunitionType_AOE_MultiFX
+	local burnedOut = spawned and (not area:IsActorTickEnabled() or area:GetRemainingLifeTime() <= 0)
+	if burnedOut or fire.polls >= FIRE_MAX_POLLS then
+		self:finish("gone")
+	end
 end
 
 ---@param listener HogwartsSpellListener
@@ -142,6 +139,15 @@ function Spells.tracker(warn, log)
 		launched = false,
 		impacted = false,
 	}, Tracker)
+	-- One loop for the tracker's lifetime: starting and stopping a loop per cast
+	-- churns UE4SS's action list, a known crash trigger.
+	Loop.gameThread(FIRE_POLL_MS, function()
+		Tracker.pollFire(tracker)
+	end, function(message)
+		if log then
+			log("spell fire poll failed: " .. message)
+		end
+	end)
 
 	---@param name string
 	---@param handler fun(tracker: HogwartsSpellTracker, spell: ASpellTool)

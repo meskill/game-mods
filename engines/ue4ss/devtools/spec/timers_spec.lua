@@ -2,37 +2,27 @@ local Timers = require("ue4ss.devtools.timers")
 local Fakes = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "fakes.lua")
 
 describe("ue4ss.devtools.timers", function()
-	local journal, timers, delayed, loops, gameThread
-
-	-- Runs what UE4SS would: pending game-thread callbacks.
-	local function runGameThread()
-		local queued = gameThread
-		gameThread = {}
-		for _, fn in ipairs(queued) do
-			fn()
-		end
-	end
+	local journal, timers, delayed, loops
 
 	before_each(function()
-		delayed, loops, gameThread = {}, {}, {}
-		_G.ExecuteWithDelay = function(ms, fn)
+		delayed, loops = {}, {}
+		_G.ExecuteInGameThreadWithDelay = function(ms, fn)
 			delayed[#delayed + 1] = { ms = ms, fn = fn }
+			return #delayed
 		end
-		_G.LoopAsync = function(ms, fn)
+		_G.LoopInGameThreadWithDelay = function(ms, fn)
 			loops[#loops + 1] = { ms = ms, fn = fn }
-		end
-		_G.ExecuteInGameThread = function(fn)
-			gameThread[#gameThread + 1] = fn
+			return #loops
 		end
 		journal = Fakes.journal()
 		timers = Timers.new(journal, "debug", tostring)
 	end)
 
 	after_each(function()
-		_G.ExecuteWithDelay, _G.LoopAsync, _G.ExecuteInGameThread = nil, nil, nil
+		_G.ExecuteInGameThreadWithDelay, _G.LoopInGameThreadWithDelay = nil, nil
 	end)
 
-	it("runs after() once on the game thread and logs its values", function()
+	it("runs after() once and logs its values", function()
 		local ran = 0
 		timers:after(300, function()
 			ran = ran + 1
@@ -40,8 +30,7 @@ describe("ue4ss.devtools.timers", function()
 		end)
 		assert.equals(300, delayed[1].ms)
 		delayed[1].fn()
-		assert.equals(0, ran)
-		runGameThread()
+		delayed[1].fn()
 		assert.equals(1, ran)
 		assert.same({ "debug = 12" }, journal.lines)
 	end)
@@ -52,20 +41,10 @@ describe("ue4ss.devtools.timers", function()
 			runs = runs + 1
 			return runs == 2
 		end)
-		local loop = loops[1].fn
-		for _ = 1, 2 do
-			assert.is_false(loop())
-			runGameThread()
+		for _ = 1, 4 do
+			loops[1].fn()
 		end
 		assert.equals(2, runs)
-		assert.is_true(loop())
-	end)
-
-	it("does not queue another run while one waits for the game thread", function()
-		timers:every(100, function() end)
-		loops[1].fn()
-		loops[1].fn()
-		assert.equals(1, #gameThread)
 	end)
 
 	it("logs errors and keeps every() running", function()
@@ -74,10 +53,8 @@ describe("ue4ss.devtools.timers", function()
 			runs = runs + 1
 			error("boom", 0)
 		end)
-		for _ = 1, 2 do
-			loops[1].fn()
-			runGameThread()
-		end
+		loops[1].fn()
+		loops[1].fn()
 		assert.equals(2, runs)
 		assert.same({ "debug ! every#1: boom", "debug ! every#1: boom" }, journal.lines)
 	end)
@@ -92,14 +69,13 @@ describe("ue4ss.devtools.timers", function()
 		end)
 		assert.equals(2, timers:stop("*"))
 		delayed[1].fn()
-		runGameThread()
-		assert.is_true(loops[1].fn())
+		loops[1].fn()
 		assert.is_false(ran)
 		assert.equals(0, timers:stop(id))
 	end)
 
-	it("skips runs disabled while they waited for the game thread", function()
-		local enabled, runs = true, 0
+	it("skips runs while disabled and resumes every() afterwards", function()
+		local enabled, runs = false, 0
 		timers = Timers.new(journal, "debug", tostring, function()
 			return enabled
 		end)
@@ -109,14 +85,11 @@ describe("ue4ss.devtools.timers", function()
 		timers:after(100, run)
 		timers:every(100, run)
 		delayed[1].fn()
-		assert.is_false(loops[1].fn())
-		enabled = false
-		runGameThread()
+		loops[1].fn()
 		assert.equals(0, runs)
 
 		enabled = true
-		assert.is_false(loops[1].fn())
-		runGameThread()
+		loops[1].fn()
 		assert.equals(1, runs)
 	end)
 end)

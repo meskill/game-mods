@@ -62,7 +62,7 @@ local INCENDIO = "/Script/Phoenix.IncendioSpellTool"
 describe("hogwarts.spells", function()
 	---@type table<string, function>
 	local hooked
-	---The tracker's running poll, if any; one tick runs it once.
+	---The tracker's game-thread loop; one tick runs it once.
 	local tick
 
 	before_each(function()
@@ -71,16 +71,14 @@ describe("hogwarts.spells", function()
 			hooked[path] = callback
 			return 1, 2
 		end
-		_G.LoopAsync = function(_, callback)
+		_G.LoopInGameThreadWithDelay = function(_, callback)
 			tick = callback
-		end
-		_G.ExecuteInGameThread = function(callback)
-			callback()
+			return 1
 		end
 	end)
 
 	after_each(function()
-		_G.RegisterHook, _G.LoopAsync, _G.ExecuteInGameThread = nil, nil, nil
+		_G.RegisterHook, _G.LoopInGameThreadWithDelay = nil, nil
 	end)
 
 	---Runs the hook on SpellTool:`name` as the game would for a call on `spell`.
@@ -232,29 +230,28 @@ describe("hogwarts.spells", function()
 
 		fire.burning = false
 		tick()
+		tick()
 		assert.same({ "fired incendio", "ended incendio gone" }, events)
-		assert.is_true(tick())
 	end)
 
-	it("ends a base Incendio with its fireball, without polling", function()
+	it("ends a base Incendio with its fireball", function()
 		local _, events = recorded()
 		local incendio = spellTool("Incendio", 0x30, PLAYER, INCENDIO, false)
 		call("Start", incendio)
 		call("OnMunitionDestroyed", incendio)
 
-		assert.is_nil(tick)
 		assert.same({ "fired incendio", "ended incendio gone" }, events)
 	end)
 
-	it("stops polling when an upgraded Incendio is replaced", function()
+	it("stops watching the fire when an upgraded Incendio is replaced", function()
 		local _, events = recorded()
 		local incendio = spellTool("Incendio", 0x30, PLAYER, INCENDIO, true)
 		call("Start", incendio)
 		call("Start", spellTool("Confringo", 0x31, PLAYER))
-
-		-- The loop stops on the tick after the poll sees the cast is gone.
+		incendio.CurrentAOE = area(0x51)
+		incendio.CurrentAOE.burning = false
 		tick()
-		assert.is_true(tick())
+
 		assert.same({ "fired incendio", "ended incendio replaced", "fired confringo" }, events)
 	end)
 end)

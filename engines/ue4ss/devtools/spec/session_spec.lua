@@ -44,14 +44,11 @@ describe("ue4ss.devtools.session", function()
 
 	it("does nothing outside tracking: timers skip their runs and marks are ignored", function()
 		local loops, delays = {}, {}
-		_G.LoopAsync = function(_, fn)
+		_G.LoopInGameThreadWithDelay = function(_, fn)
 			loops[#loops + 1] = fn
 		end
-		_G.ExecuteWithDelay = function(_, fn)
+		_G.ExecuteInGameThreadWithDelay = function(_, fn)
 			delays[#delays + 1] = fn
-		end
-		_G.ExecuteInGameThread = function(fn)
-			fn()
 		end
 		local session = Session.new(Fakes.journal(), { dir = "mod" })
 		local runs = 0
@@ -64,18 +61,13 @@ describe("ue4ss.devtools.session", function()
 		loops[1]()
 		delays[1]()
 		local mark = session:mark("idle")
-
-		_G.LoopAsync, _G.ExecuteWithDelay, _G.ExecuteInGameThread = nil, nil, nil
 		assert.equals(0, runs)
 		assert.is_nil(mark)
 
 		session.tracker:start("t")
-		_G.ExecuteInGameThread = function(fn)
-			fn()
-		end
 		loops[1]()
 		local tracked = session:mark("hold")
-		_G.ExecuteInGameThread = nil
+		_G.LoopInGameThreadWithDelay, _G.ExecuteInGameThreadWithDelay = nil, nil
 		assert.equals(1, runs)
 		assert.equals("mark #1 hold", tracked)
 	end)

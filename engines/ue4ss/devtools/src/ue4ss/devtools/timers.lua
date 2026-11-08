@@ -1,9 +1,10 @@
----Runs functions later or repeatedly with UE4SS's ExecuteWithDelay and
----LoopAsync. Those call back on UE4SS's async thread and cannot be stopped
----from outside; here every run hops to the game thread, errors go to the log
----instead of UE4SS.log, and stop() ends timers that are still waiting. While
----`enabled` returns false, runs are skipped, both before hopping to the game
----thread and once there.
+---Runs functions later or repeatedly on the game thread with UE4SS's
+---ExecuteInGameThreadWithDelay and LoopInGameThreadWithDelay, so no Lua runs on
+---UE4SS's async thread (RE-UE4SS issue #168). Errors go to the log instead of
+---UE4SS.log, and stop() ends timers that are still waiting. Stopped and
+---finished every() timers stay registered and do nothing: cancelling from
+---inside a callback edits the list UE4SS is iterating (issue #1180). While
+---`enabled` returns false, runs are skipped.
 ---@class DebugTimers
 ---@field private journal DevtoolsJournal
 ---@field private scope string
@@ -16,7 +17,6 @@ Timers.__index = Timers
 
 ---@class DebugTimer
 ---@field active boolean
----@field pending boolean A run is queued on the game thread.
 ---@field name string "after#<id>" or "every#<id>", shown with its errors.
 
 ---@param journal DevtoolsJournal
@@ -44,64 +44,42 @@ end
 ---@return integer id
 function Timers:after(ms, fn)
 	local id, timer = self:create("after")
-	ExecuteWithDelay(ms, function()
-		if not self.enabled() then
-			timer.active = false
-			self.timers[id] = nil
+	ExecuteInGameThreadWithDelay(ms, function()
+		if not timer.active then
 			return
 		end
-		ExecuteInGameThread(function()
-			if not timer.active then
-				return
+		timer.active = false
+		self.timers[id] = nil
+		if not self.enabled() then
+			return
+		end
+		local result = self:run(timer, fn)
+		if result then
+			for i = 1, result.n do
+				self.journal:write(self.scope, "= " .. self.format(result[i]))
 			end
-			timer.active = false
-			self.timers[id] = nil
-			-- Disabled while this waited for the game thread.
-			if not self.enabled() then
-				return
-			end
-			local result = self:run(timer, fn)
-			if result then
-				for i = 1, result.n do
-					self.journal:write(self.scope, "= " .. self.format(result[i]))
-				end
-			end
-		end)
+		end
 	end)
 	return id
 end
 
 ---Runs fn on the game thread every ms milliseconds until it returns true or
----the timer is stopped. A run is not queued again while the previous one is
----still waiting for the game thread. Errors are logged with the timer's name
----and do not stop it.
+---the timer is stopped. Runs while disabled are skipped and the timer kept.
+---Errors are logged with the timer's name and do not stop it.
 ---@param ms integer
 ---@param fn fun(): boolean?
 ---@return integer id
 function Timers:every(ms, fn)
 	local id, timer = self:create("every")
-	LoopAsync(ms, function()
-		if not timer.active then
-			return true
+	LoopInGameThreadWithDelay(ms, function()
+		if not timer.active or not self.enabled() then
+			return
 		end
-		if not timer.pending and self.enabled() then
-			timer.pending = true
-			ExecuteInGameThread(function()
-				timer.pending = false
-				-- stop() or disabling may have happened while this waited for
-				-- the game thread; a disabled run is skipped, the timer kept.
-				local active = timer.active --[[@as boolean]]
-				if not active or not self.enabled() then
-					return
-				end
-				local result = self:run(timer, fn)
-				if result and result[1] == true then
-					timer.active = false
-					self.timers[id] = nil
-				end
-			end)
+		local result = self:run(timer, fn)
+		if result and result[1] == true then
+			timer.active = false
+			self.timers[id] = nil
 		end
-		return false
 	end)
 	return id
 end
@@ -129,7 +107,7 @@ function Timers:create(kind)
 	self.count = self.count + 1
 	local id = self.count
 	---@type DebugTimer
-	local timer = { active = true, pending = false, name = ("%s#%d"):format(kind, id) }
+	local timer = { active = true, name = ("%s#%d"):format(kind, id) }
 	self.timers[id] = timer
 	return id, timer
 end
