@@ -3,6 +3,14 @@
 -- functions) and follows the pause states every 100 ms. In the game: start
 -- tracking, open and close menus (a mark after each), stop; the report lists
 -- what fired and changed. Findings so far: games/hogwarts-legacy/README.md.
+--
+-- Never called: Biped_Player:PauseMenuStart, InGameMenuScreen:ExitPauseMenu,
+-- MapSubSystem:SetInPauseMenu, GameplayStatics:SetGamePaused,
+-- UIManager:RequestGameAndSystemPause,
+-- PhoenixGameSettings:OnFullScreenMenuActive|Inactive,
+-- TutorialSystem:ClosePauseMenu, and the Screen close functions.
+-- UIManager:SetInMenuTransition moves the camera between pages; it does not
+-- mark opening or closing.
 
 -- Besides every UIManager function, hooked by class below.
 local HOOKS = {

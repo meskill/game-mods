@@ -8,8 +8,9 @@ local AdaptiveTrigger = require("adaptive_triggers")
 local Mode = AdaptiveTrigger.Mode
 
 -- Spell fire effects. main.lua owns the wand effects (baseline and trigger
--- hold); a fire effect below replaces them from the sample a cast fires until
--- hogwarts.spells reports it ended (or, for untilImpact effects, its impact).
+-- hold); a fire effect below replaces them from the moment hogwarts.spells
+-- reports a cast fired until it reports it ended (or, for untilImpact effects,
+-- its impact).
 
 -- Experimental R2 fire profiles, not Sony's EXE profiles. Positions use DSX
 -- travel regions; parameter ranges are in backends/dsx/API.md.
@@ -24,7 +25,7 @@ local PUSH = { mode = Mode.OFF, args = {} }
 -- Slow, strong vibration while the projectile flies. Impact visuals keep some
 -- munitions (e.g. Diffindo's) alive after the hit, so it ends on impact.
 ---@type HogwartsTriggerEffect
-local PROJECTILE = { mode = Mode.VIBRATION, args = { 3, 4, 5 }, untilImpact = true }
+local PROJECTILE = { mode = Mode.VIBRATION, args = { 2, 5, 8 }, untilImpact = true }
 -- Light vibration from region 0 across the whole travel, one amplitude step
 -- above the R2 hold vibration (VIBRATION's start cannot go below 1).
 ---@type HogwartsTriggerEffect
@@ -32,13 +33,10 @@ local UTILITY = { mode = Mode.MULTIPLE_POSITION_VIBRATION, args = { 20, 2, 2, 2,
 -- Heavy vibration for spells that hit many targets at once: maximum amplitude
 -- from the top of travel, at a low rumbling frequency.
 ---@type HogwartsTriggerEffect
-local AREA = { mode = Mode.VIBRATION, args = { 1, 8, 10 } }
+local AREA = { mode = Mode.VIBRATION, args = { 1, 6, 9 } }
 
--- Keys are lowercased DatabaseName values. Names verified in game logs: accio,
--- arrestomomentum, confringo, depulso, descendo, diffindo, disillusionment,
--- glacius, incendio, levioso. The rest follow the dumped Phoenix *SpellTool
--- class names, which matched every verified name; aliases cover the spoken
--- spell names.
+-- Keys are lowercased DatabaseName values, following the dumped Phoenix
+-- *SpellTool class names; aliases cover the spoken spell names.
 ---@type table<string, HogwartsTriggerEffect?>
 local EFFECTS = {
 	-- Motion control.
@@ -64,13 +62,11 @@ local EFFECTS = {
 	-- Utility spells.
 	lumos = UTILITY,
 	petrificus = UTILITY,
-	protego = UTILITY,
 	wingardium = UTILITY,
 	disillusionment = UTILITY,
 	obliviate = UTILITY,
 	episkey = UTILITY,
 	finite = UTILITY,
-	revelio = UTILITY,
 	reparo = UTILITY,
 
 	-- Area spells.
@@ -91,16 +87,25 @@ local DEFAULT_EFFECT = { mode = Mode.FEEDBACK, args = { 2, 3 } }
 
 local Spells = {}
 
----Fire effect for a cast's lowercased `DatabaseName`.
+-- Spells with no fire effect of their own: R2 goes back to the wand's effect
+-- (baseline, or the hold vibration while the wand is raised).
+---@type table<string, true?>
+local WAND_EFFECT = { revelio = true, protego = true }
+
+---Fire effect for a cast's lowercased `DatabaseName`, or nil when R2 should
+---keep the wand's effect.
 ---@param name string
----@return HogwartsTriggerEffect effect
----@return boolean matched False when the default effect stands in.
+---@return HogwartsTriggerEffect? effect
+---@return "matched"|"default"|"wand" source
 function Spells.effect(name)
+	if WAND_EFFECT[name] then
+		return nil, "wand"
+	end
 	local effect = EFFECTS[name]
 	if effect then
-		return effect, true
+		return effect, "matched"
 	end
-	return DEFAULT_EFFECT, false
+	return DEFAULT_EFFECT, "default"
 end
 
 return Spells

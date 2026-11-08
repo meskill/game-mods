@@ -4,208 +4,257 @@ local function valid()
 	return true
 end
 
----A pawn whose wand holds one spell tool; tests mutate `spell` between samples.
-local function scene(name)
-	local spell = { name = name, address = 0x30, stopped = true, started = false }
-	spell.DatabaseName = {
-		ToString = function()
-			return spell.name
+---A character of `class`, as `ASpellTool:GetCharacter()` returns it.
+local function character(class)
+	return {
+		IsValid = valid,
+		IsA = function(_, path)
+			return path == class
 		end,
 	}
-	spell.IsValid = valid
-	function spell:GetAddress()
-		return self.address
-	end
-	function spell:IsStopped()
-		return self.stopped
-	end
-	function spell:IsStarted_K2()
-		return self.started
-	end
-	function spell:GetActiveMunition()
-		return self.munition
-	end
-
-	local wand = { IsValid = valid }
-	function wand:GetAddress()
-		return 0x20
-	end
-	function wand:GetActiveSpellTool()
-		return spell
-	end
-
-	local pawn = {}
-	function pawn:GetAddress()
-		return 0x10
-	end
-	function pawn:GetWand()
-		return wand
-	end
-	return pawn, spell
 end
 
-local function munition(address, speed)
-	local projectile = { speed = speed, IsValid = valid }
-	function projectile:IsActorBeingDestroyed()
-		return false
-	end
-	function projectile:GetAddress()
+local PLAYER = character("/Script/Phoenix.Biped_Player")
+local NPC = character("/Script/Phoenix.NPC_Character")
+
+---A spell tool of `owner` named `name`, of `class` (a plain SpellTool by default),
+---upgraded when `upgraded` is true.
+local function spellTool(name, address, owner, class, upgraded)
+	return {
+		DatabaseName = {
+			ToString = function()
+				return name
+			end,
+		},
+		IsValid = valid,
+		IsA = function(_, path)
+			return path == class
+		end,
+		HasUpgradedMechanics = function()
+			return upgraded == true
+		end,
+		GetAddress = function()
+			return address
+		end,
+		GetCharacter = function()
+			return owner
+		end,
+	}
+end
+
+---An Incendio area actor that burns while `burning` is true.
+local function area(address)
+	local actor = { burning = true, IsValid = valid }
+	function actor:GetAddress()
 		return address
 	end
-	function projectile:GetVelocity()
-		return { X = self.speed, Y = 0, Z = 0 }
+	function actor:IsActorTickEnabled()
+		return self.burning
 	end
-	return projectile
+	function actor:GetRemainingLifeTime()
+		return self.burning and 0.4 or 0
+	end
+	return actor
 end
 
----Tracker whose events are recorded as "fired name", "impact name", "ended name reason".
-local function recorded()
-	local events = {}
-	local tracker = Spells.tracker({
-		fired = function(cast)
-			events[#events + 1] = "fired " .. cast.name
-		end,
-		impact = function(cast)
-			events[#events + 1] = "impact " .. cast.name
-		end,
-		ended = function(cast, reason)
-			events[#events + 1] = "ended " .. cast.name .. " " .. reason
-		end,
-	})
-	return tracker, events
-end
+local INCENDIO = "/Script/Phoenix.IncendioSpellTool"
 
 describe("hogwarts.spells", function()
-	it("fires a held cast when it ends, then ends it without a projectile", function()
-		local pawn, spell = scene("Incendio")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
-		assert.same({}, events)
+	---@type table<string, function>
+	local hooked
+	---The tracker's running poll, if any; one tick runs it once.
+	local tick
 
-		spell.stopped = true
-		tracker:update(pawn, 0.2)
-		assert.same({ "fired incendio" }, events)
-
-		tracker:update(pawn, 0.3)
-		assert.same({ "fired incendio", "ended incendio gone" }, events)
+	before_each(function()
+		hooked, tick = {}, nil
+		_G.RegisterHook = function(path, callback)
+			hooked[path] = callback
+			return 1, 2
+		end
+		_G.LoopAsync = function(_, callback)
+			tick = callback
+		end
+		_G.ExecuteInGameThread = function(callback)
+			callback()
+		end
 	end)
 
-	it("lasts while its new projectile flies and reports one impact", function()
-		local pawn, spell = scene("diffindo")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
+	after_each(function()
+		_G.RegisterHook, _G.LoopAsync, _G.ExecuteInGameThread = nil, nil, nil
+	end)
 
-		local projectile = munition(0x40, 0)
-		spell.munition = projectile
-		tracker:update(pawn, 0.2)
+	---Runs the hook on SpellTool:`name` as the game would for a call on `spell`.
+	local function call(name, spell)
+		hooked["/Script/Phoenix.SpellTool:" .. name]({
+			get = function()
+				return spell
+			end,
+		})
+	end
+
+	---Resumed tracker whose events are recorded as "fired name", "impact name",
+	---"ended name reason".
+	local function recorded()
+		local events = {}
+		local tracker = Spells.tracker(error)
+		tracker:listen({
+			fired = function(cast)
+				events[#events + 1] = "fired " .. cast.name
+			end,
+			impact = function(cast)
+				events[#events + 1] = "impact " .. cast.name
+			end,
+			ended = function(cast, reason)
+				events[#events + 1] = "ended " .. cast.name .. " " .. reason
+			end,
+		})
+		tracker:resume()
+		return tracker, events
+	end
+
+	it("fires a player cast on Start and ends it when its spell stops without a projectile", function()
+		local _, events = recorded()
+		local accio = spellTool("Accio", 0x30, PLAYER)
+		call("Start", accio)
+		assert.same({ "fired accio" }, events)
+
+		call("OnStop", accio)
+		assert.same({ "fired accio", "ended accio gone" }, events)
+	end)
+
+	it("keeps a projectile cast past its stop until the projectile is destroyed", function()
+		local _, events = recorded()
+		local diffindo = spellTool("Diffindo", 0x30, PLAYER)
+		call("Start", diffindo)
+		call("OnMunitionFired", diffindo)
+		call("OnStop", diffindo)
 		assert.same({ "fired diffindo" }, events)
 
-		-- Stationary before launch is not an impact.
-		spell.stopped = true
-		tracker:update(pawn, 0.3)
-		projectile.speed = 500
-		tracker:update(pawn, 0.4)
-		assert.same({ "fired diffindo" }, events)
-
-		projectile.speed = 0
-		tracker:update(pawn, 0.5)
-		tracker:update(pawn, 0.6)
+		call("OnMunitionImpact", diffindo)
+		call("OnMunitionImpact", diffindo)
 		assert.same({ "fired diffindo", "impact diffindo" }, events)
 
-		spell.munition = nil
-		tracker:update(pawn, 0.7)
+		call("OnMunitionDestroyed", diffindo)
 		assert.same({ "fired diffindo", "impact diffindo", "ended diffindo gone" }, events)
 	end)
 
-	it("does not fire on a projectile that was live before the hold", function()
-		local pawn, spell = scene("confringo")
-		local tracker, events = recorded()
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
-		tracker:update(pawn, 0.2)
+	it("ignores other characters' casts and other spell tools' events", function()
+		local _, events = recorded()
+		call("Start", spellTool("Confringo", 0x40, NPC))
 		assert.same({}, events)
 
-		spell.started = true
-		tracker:update(pawn, 0.3)
-		assert.same({ "fired confringo" }, events)
+		local incendio = spellTool("Incendio", 0x30, PLAYER)
+		call("Start", incendio)
+		local other = spellTool("Incendio", 0x41, NPC)
+		call("OnMunitionImpact", other)
+		call("OnStop", other)
+		call("OnMunitionDestroyed", other)
+		assert.same({ "fired incendio" }, events)
 	end)
 
-	it("caps a cast whose projectile never disappears", function()
-		local pawn, spell = scene("confringo")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0)
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 1)
-
-		tracker:update(pawn, 3.9)
-		assert.same({ "fired confringo" }, events)
-		tracker:update(pawn, 4)
-		assert.same({ "fired confringo", "ended confringo capped" }, events)
+	it("replaces the current cast when the player fires another spell", function()
+		local _, events = recorded()
+		call("Start", spellTool("Confringo", 0x30, PLAYER))
+		call("Start", spellTool("Glacius", 0x31, PLAYER))
+		assert.same({ "fired confringo", "ended confringo replaced", "fired glacius" }, events)
 	end)
 
-	it("ends the previous cast when the same spell fires again", function()
-		local pawn, spell = scene("confringo")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 0.2)
-		spell.stopped = true
-		tracker:update(pawn, 0.3)
-
-		spell.stopped = false
-		tracker:update(pawn, 0.4)
-		spell.munition = munition(0x41, 500)
-		tracker:update(pawn, 0.5)
-		assert.same({ "fired confringo", "ended confringo replaced", "fired confringo" }, events)
-	end)
-
-	it("cancels a cast when the active spell changes", function()
-		local pawn, spell = scene("confringo")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 0.2)
-
-		spell.address, spell.name = 0x31, "glacius"
-		tracker:update(pawn, 0.3)
+	it("cancels the current cast on the basic wand attack without firing it", function()
+		local _, events = recorded()
+		call("Start", spellTool("Confringo", 0x30, PLAYER))
+		call("Start", spellTool("Stupefy", 0x31, PLAYER))
 		assert.same({ "fired confringo", "ended confringo cancelled" }, events)
 	end)
 
-	it("does not replay an interrupted cast when sampling resumes", function()
-		local pawn, spell = scene("confringo")
+	it("ends the cast on pause and ignores hooks until resumed", function()
 		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		tracker:update(pawn, 0.1)
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 0.2)
-
-		tracker:interrupt()
-		tracker:update(pawn, 0.3)
+		local confringo = spellTool("Confringo", 0x30, PLAYER)
+		call("Start", confringo)
+		tracker:pause()
+		call("Start", confringo)
 		assert.same({ "fired confringo", "ended confringo interrupted" }, events)
+
+		tracker:resume()
+		call("Start", confringo)
+		assert.same({ "fired confringo", "ended confringo interrupted", "fired confringo" }, events)
 	end)
 
-	it("ignores the basic wand attack", function()
-		local pawn, spell = scene("Stupefy")
-		local tracker, events = recorded()
-		tracker:update(pawn, 0)
-		spell.stopped = false
-		spell.munition = munition(0x40, 500)
-		tracker:update(pawn, 0.1)
-		spell.stopped = true
-		tracker:update(pawn, 0.2)
-		assert.same({}, events)
+	it("starts paused", function()
+		local tracker = Spells.tracker(error)
+		local fired = 0
+		tracker:listen({
+			fired = function()
+				fired = fired + 1
+			end,
+		})
+		call("Start", spellTool("Confringo", 0x30, PLAYER))
+		assert.equals(0, fired)
+	end)
+
+	it("logs a hook it cannot register and keeps the others", function()
+		_G.RegisterHook = function(path, callback)
+			if path:find("OnStop", 1, true) then
+				error("no UFunction " .. path)
+			end
+			hooked[path] = callback
+		end
+		local warnings = {}
+		local tracker = Spells.tracker(function(message)
+			warnings[#warnings + 1] = message
+		end)
+		local fired = 0
+		tracker:listen({
+			fired = function()
+				fired = fired + 1
+			end,
+		})
+		tracker:resume()
+		call("Start", spellTool("Confringo", 0x30, PLAYER))
+
+		assert.equals(1, #warnings)
+		assert.truthy(warnings[1]:find("SpellTool:OnStop", 1, true))
+		assert.equals(1, fired)
+	end)
+
+	it("ends an upgraded Incendio when its new fire burns out, not when the fireball goes", function()
+		local _, events = recorded()
+		local incendio = spellTool("Incendio", 0x30, PLAYER, INCENDIO, true)
+		local old = area(0x50)
+		old.burning = false
+		incendio.CurrentAOE = old
+		call("Start", incendio)
+		tick()
+		local fire = area(0x51)
+		incendio.CurrentAOE = fire
+		call("OnMunitionDestroyed", incendio)
+		tick()
+		assert.same({ "fired incendio" }, events)
+
+		fire.burning = false
+		tick()
+		assert.same({ "fired incendio", "ended incendio gone" }, events)
+		assert.is_true(tick())
+	end)
+
+	it("ends a base Incendio with its fireball, without polling", function()
+		local _, events = recorded()
+		local incendio = spellTool("Incendio", 0x30, PLAYER, INCENDIO, false)
+		call("Start", incendio)
+		call("OnMunitionDestroyed", incendio)
+
+		assert.is_nil(tick)
+		assert.same({ "fired incendio", "ended incendio gone" }, events)
+	end)
+
+	it("stops polling when an upgraded Incendio is replaced", function()
+		local _, events = recorded()
+		local incendio = spellTool("Incendio", 0x30, PLAYER, INCENDIO, true)
+		call("Start", incendio)
+		call("Start", spellTool("Confringo", 0x31, PLAYER))
+
+		-- The loop stops on the tick after the poll sees the cast is gone.
+		tick()
+		assert.is_true(tick())
+		assert.same({ "fired incendio", "ended incendio replaced", "fired confringo" }, events)
 	end)
 end)

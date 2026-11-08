@@ -53,10 +53,7 @@ describe("devtools.tracking", function()
 		tracker:start()
 		tracker:trackCall("Tool:Raise", { state = 12, last = 3 })
 		tracker:trackCall("Tool:Lower")
-		assert.same(
-			{ "track.call Tool:Raise last=3 state=12", "track.call Tool:Lower" },
-			{ lines[2], lines[3] }
-		)
+		assert.same({ "track.call Tool:Raise last=3 state=12", "track.call Tool:Lower" }, { lines[2], lines[3] })
 	end)
 
 	it("logs at most one call per label per interval and counts the rest", function()

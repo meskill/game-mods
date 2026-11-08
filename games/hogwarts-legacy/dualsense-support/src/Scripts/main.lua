@@ -1,6 +1,9 @@
 -- Requires DSX running with UDP enabled and a connected adaptive-trigger controller.
 -- Deploy the backends_dsx Lua modules and transitive dependencies on UE4SS's module paths.
 -- DSX effects persist: return to a paused state before disabling/reloading this mod.
+
+-- Object lookups use the shared ue4ss package rather than the installation's
+-- UEHelpers, because UEHelpers behaves differently across UE4SS versions.
 local Objects = require("ue4ss.objects")
 local Lookup = require("ue4ss.lookup")
 local Loop = require("ue4ss.loop")
@@ -10,6 +13,7 @@ local AdaptiveTrigger = require("adaptive_triggers")
 local getTime = require("net.socket").gettime
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
+local Wand = require("hogwarts.wand")
 local Spells = require("spells")
 local Mounts = require("mounts")
 
@@ -23,20 +27,32 @@ local DEBUG = true
 local log = Log.new("[HogwartsDualSense]")
 local debugLog = Log.new("[HogwartsDualSense][debug]")
 
+-- Spell hooks register at load, outside ExecuteAsync. The tracker reports casts
+-- from inside them once the poll below resumes it with the player on foot.
+local spells = SpellCasts.tracker(log, DEBUG and debugLog or nil)
+
+-- The wand arm hook also registers at load; ExecuteAsync sets the handler once
+-- it can send effects.
+---@type fun(state: HogwartsArmState, last: HogwartsArmState?)?
+local armChanged
+Wand.subscribe({
+	changed = function(state, last)
+		if armChanged then
+			armChanged(state, last)
+		end
+	end,
+})
+
 -- Wand effects during gameplay; a spell fire effect from spells.lua overrides both.
--- A click on R2 is the basic wand attack and keeps the baseline; holding R2
--- (spell casting) switches to the light hold vibration.
+-- The baseline holds while the wand is down; raising it (right hand up with the
+-- wand) switches to the light hold vibration.
 ---@type HogwartsTriggerEffect
 local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.GameCube, args = {} }
 ---@type HogwartsTriggerEffect
 local HOLD_EFFECT = { mode = AdaptiveTrigger.Mode.VIBRATION, args = { 3, 1, 20 } }
--- Seconds R2 must stay down before it counts as a hold rather than a click.
-local HOLD_DELAY = 0.3
--- Seconds after a spell effect ends before a still-held R2 vibrates again;
+-- Seconds after a spell effect ends before a still-raised wand vibrates again;
 -- the baseline fills the gap.
 local SPELL_END_DELAY = 0.1
----@type FKey
-local R2_KEY = { KeyName = FName("Gamepad_RightTrigger") }
 ---@type HogwartsTriggerEffect
 local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 
@@ -80,6 +96,8 @@ local function activePawn()
 	return pawn, "active", controller
 end
 
+-- Flow: find the DSX controller once, then every POLL_INTERVAL_MS on the game
+-- thread pick one effect per trigger (see update) and send it only when it changes.
 -- Discovery may wait for DSX, so it must never run on the game thread.
 ExecuteAsync(function()
 	local server, err = Server.connect()
@@ -88,6 +106,7 @@ ExecuteAsync(function()
 		return
 	end
 
+	-- Ask DSX for its device list and pick the first adaptive-trigger controller.
 	local status
 	status, err = server:requestStatus(1)
 	local index
@@ -119,11 +138,13 @@ ExecuteAsync(function()
 	local stopped = false
 	---@type string?
 	local gameplayState
-	local triggerHeld, triggerDown = false, false
-	---@type HogwartsTriggerEffect?
-	local lastSpellEffect
+	-- The last poll found the player on foot in gameplay, so R2 follows the wand.
+	local onFoot = false
 	local spellEndedAt = -math.huge
 
+	-- Sends an effect only when it differs from what the trigger already has; DSX
+	-- keeps the last effect, so repeating it is wasted traffic. Packets are cached per
+	-- effect. A failed send stops the mod.
 	---@param trigger DSXTrigger
 	---@param effect HogwartsTriggerEffect
 	---@param force? boolean A new cast must refresh even an identical effect.
@@ -165,13 +186,50 @@ ExecuteAsync(function()
 		return true
 	end
 
+	-- R2 shows a cast's fire effect from `fired` until `ended`, or until `impact`
+	-- for projectile effects. Spell hooks call these between polls, so they apply
+	-- the effect themselves.
 	---@type HogwartsTriggerEffect? Fire effect of the latest cast while it lasts.
 	local spellEffect
-	local spells = SpellCasts.tracker({
+
+	-- R2 on foot: the fire effect, else the hold vibration while the wand is raised,
+	-- else the baseline. After a fire effect, the baseline lasts a moment before the
+	-- hold vibration resumes.
+	---@param now number
+	---@return HogwartsTriggerEffect
+	local function wandEffect(now)
+		if spellEffect then
+			return spellEffect
+		end
+		return Wand.isRaised() and now >= spellEndedAt + SPELL_END_DELAY and HOLD_EFFECT or BASE_EFFECT
+	end
+
+	---@param apply boolean False when a new fire effect follows at once.
+	local function endSpellEffect(apply)
+		if not spellEffect then
+			return
+		end
+		spellEffect = nil
+		local now = getTime()
+		spellEndedAt = now
+		if apply and onFoot then
+			applyEffect(RIGHT_TRIGGER, wandEffect(now))
+		end
+	end
+
+	spells:listen({
 		fired = function(cast)
-			local effect, matched = Spells.effect(cast.name)
+			local effect, source = Spells.effect(cast.name)
 			if DEBUG then
-				debugLog(("spell effect database=%s %s"):format(cast.name, matched and "matched" or "default"))
+				debugLog(("spell effect database=%s %s"):format(cast.name, source))
+			end
+			if not effect then
+				-- A replaced cast already cleared its effect without re-applying R2.
+				endSpellEffect(false)
+				if onFoot then
+					applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
+				end
+				return
 			end
 			spellEffect = effect
 			-- A new cast must refresh even an identical effect.
@@ -181,13 +239,23 @@ ExecuteAsync(function()
 		end,
 		impact = function()
 			if spellEffect and spellEffect.untilImpact then
-				spellEffect = nil
+				endSpellEffect(true)
 			end
 		end,
-		ended = function()
-			spellEffect = nil
+		ended = function(_, reason)
+			endSpellEffect(reason ~= "replaced")
 		end,
-	}, DEBUG and debugLog or nil)
+	})
+
+	-- Arm changes apply at once instead of waiting for the next poll.
+	armChanged = function(state, last)
+		if DEBUG then
+			debugLog(("wand arm %s -> %d"):format(tostring(last), state))
+		end
+		if onFoot then
+			applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
+		end
+	end
 
 	-- DSX answers every datagram with its status; replies show whether it accepted
 	-- our trigger packets and still sees the controller.
@@ -211,6 +279,10 @@ ExecuteAsync(function()
 		end
 	end
 
+	-- One poll. Priority, first match wins:
+	--   1. no active gameplay -> triggers off
+	--   2. riding a mount     -> mount effects (mounts.lua)
+	--   3. otherwise R2       -> spell fire effect, else hold vibration, else baseline
 	local function update()
 		if DEBUG then
 			logReplies()
@@ -220,8 +292,10 @@ ExecuteAsync(function()
 			debugLog("gameplay " .. state)
 		end
 		gameplayState = state
+		-- 1. Paused, cinematic, dead, or no player: end any cast and switch off.
 		if not pawn or not controller then
-			spells:interrupt()
+			onFoot = false
+			spells:pause()
 			applyEffect(RIGHT_TRIGGER, OFF_EFFECT)
 			if appliedEffects[LEFT_TRIGGER] then
 				applyEffect(LEFT_TRIGGER, OFF_EFFECT)
@@ -229,11 +303,11 @@ ExecuteAsync(function()
 			return
 		end
 		local now = getTime()
-		-- On a mount the wand and spells pause and the triggers follow the mount.
+		-- 2. On a mount the wand and spells pause and the triggers follow the mount.
 		local mount = mounts:update(pawn, controller, now)
 		if mount then
-			spells:interrupt()
-			lastSpellEffect = nil
+			onFoot = false
+			spells:pause()
 			local right, left = mountEffects:update(mount)
 			applyEffect(RIGHT_TRIGGER, right)
 			if left then
@@ -243,24 +317,13 @@ ExecuteAsync(function()
 			end
 			return
 		end
+		-- 3. On foot: L2 is unused, R2 follows the wand; spell hooks report casts.
+		onFoot = true
+		spells:resume()
 		if appliedEffects[LEFT_TRIGGER] then
 			applyEffect(LEFT_TRIGGER, OFF_EFFECT)
 		end
-		local heldFor = controller:GetInputKeyTimeDown(R2_KEY)
-		local held = heldFor >= HOLD_DELAY
-		local down = heldFor > 0
-		if DEBUG and (held ~= triggerHeld or down ~= triggerDown) then
-			debugLog(("R2 %s (down %.2f s)"):format(held and "held" or down and "down" or "up", heldFor))
-		end
-		triggerHeld, triggerDown = held, down
-		spells:update(pawn, now)
-		local effect = spellEffect
-		if lastSpellEffect and not effect then
-			spellEndedAt = now
-		end
-		lastSpellEffect = effect
-		local vibrate = held and now >= spellEndedAt + SPELL_END_DELAY
-		applyEffect(RIGHT_TRIGGER, effect or (vibrate and HOLD_EFFECT) or BASE_EFFECT)
+		applyEffect(RIGHT_TRIGGER, wandEffect(now))
 	end
 
 	Loop.gameThread(POLL_INTERVAL_MS, function()
@@ -272,5 +335,5 @@ ExecuteAsync(function()
 		log("Update failed: " .. message)
 	end)
 
-	log("Local wand spell polling ready for controller " .. index)
+	log("Trigger effects ready for controller " .. index)
 end)

@@ -103,9 +103,6 @@ describe("ue4ss.devtools.session", function()
 
 		_G.FindAllOf = nil
 		Fakes.restore()
-		assert.are.same(
-			{ "track.start t", "track.call Pawn:Restart self=BP_Player_C'BP_Player_C_1'" },
-			journal.lines
-		)
+		assert.are.same({ "track.start t", "track.call Pawn:Restart self=BP_Player_C'BP_Player_C_1'" }, journal.lines)
 	end)
 end)

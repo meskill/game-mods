@@ -17,13 +17,7 @@ all the Field Guide. Every opening and closing takes the same path:
 | Resumed | `IsGamePaused`, `UIManager:InPauseMode` and `MapSubSystem:GetInPauseMenu` turn false together, with a delay after closing |
 
 `InPauseMode` and `GetInPauseMenu` turn true with a delay after opening, so
-they are worse opening signals than `IsGamePaused`. `SetInMenuTransition`
-moves the camera between pages and does not mark opening or closing. These
-never fired: `Biped_Player:PauseMenuStart`, `InGameMenuScreen:ExitPauseMenu`,
-`MapSubSystem:SetInPauseMenu`, `GameplayStatics:SetGamePaused`,
-`UIManager:RequestGameAndSystemPause`,
-`PhoenixGameSettings:OnFullScreenMenuActive|Inactive`,
-`TutorialSystem:ClosePauseMenu`, and the `Screen` close functions.
+`IsGamePaused` is the better opening signal.
 
 Spell tracking stops while `IsGamePaused` is true, which matches the Field
 Guide's opening and closing. The map opened by its own key, dialogue, vendors
@@ -43,3 +37,85 @@ Menus.isOpen()
 ```
 
 A menu already open when the mod loads is not seen until it is reopened.
+
+### Spells
+
+The wand (`WandTool`) holds one spell tool (`SpellTool`) per spell.
+`GetActiveSpellTool()` returns the one in use; its `DatabaseName` is the
+spell's name, such as `Confringo`. The basic attack is the `Stupefy` tool.
+
+A cast runs in this order (times from the button press):
+
+| Moment | Signal | Time |
+| --- | --- | --- |
+| Button pressed | `WandTool:OnSpell_Pressed(SpellSlot)`: 3 to 6 for the face buttons, 99 for Revelio | 0 |
+| Cast begins | `WandTool:OnActiveSpellToolChanged`, `SpellTool:OwnerHasStartedCasting`; `IsStopped()` turns false | 0 |
+| Projectile spawned | a new `BP_SubSonic_<Spell>_C` actor | 0.02 to 0.37 s |
+| Spell fires | `SpellTool:Start` | 0.03 to 0.33 s after the spawn |
+| Projectile gone | `SpellTool:OnMunitionDestroyed` | 0.1 to 0.7 s after `Start` |
+
+Revelio has no projectile, so `Start` is its last signal. Holding the button
+doesn't make a cast last longer.
+
+The upgraded Incendio (`HasUpgradedMechanics()`) leaves a ring of burning
+grass: its area actor, `IncendioSpellTool.CurrentAOE`, spawns about 0.1 s
+after `Start` and burns until about 0.75 s, when it stops ticking and its
+lifetime runs out; the last flames fade by about 1.5 s. `CurrentAOE` keeps
+pointing at the old actor until the next Incendio.
+
+`hogwarts.spells` (`shared/src/hogwarts/spells.lua`) reports the player's
+casts. Create the tracker when the mod loads so its hooks register on the
+game thread; it starts paused.
+
+```lua
+local Spells = require("hogwarts.spells")
+
+-- warn receives hooks that could not be registered; the optional log, cast events.
+local tracker = Spells.tracker(print, print)
+tracker:listen({
+	fired = function(cast) end, -- cast.name: lowercased DatabaseName, e.g. "confringo"
+	impact = function(cast) end, -- its projectile hit something; at most once
+	ended = function(cast, reason) end, -- no further events for this cast
+})
+tracker:resume() -- report casts, e.g. while the player is on foot in gameplay
+tracker:pause() -- ignore them and end the current cast ("interrupted")
+```
+
+`fired` comes from `Start`, which runs on the cast's spell tool: `cast.name` is
+that tool's `DatabaseName`, lowercased (`"confringo"`). Upgraded spells keep
+the base name. The basic attack fires nothing and ends the
+current cast as `"cancelled"`. `ended` reasons: `"gone"` when the projectile
+is destroyed, `"replaced"` when another spell fires, `"cancelled"`, and
+`"interrupted"` on `pause()`. An upgraded Incendio ends as `"gone"` when its
+fire burns out: the tracker polls its area actor every 100 ms from `Start`
+until then. A cast without a projectile never ends as `"gone"`. Callbacks run
+inside the hooks, on the game thread.
+
+### Wand
+
+`WandTool:OnRightArmStateChanged(RightArmState, LastRightArmState)` runs the
+moment the right arm changes, for every character's wand.
+
+| State | Value | What you see |
+| --- | --- | --- |
+| `PlayHeavyAniticipationMotion` | 12 | right hand up, wand raised |
+| `StopMotionOnly` | 7 | casting a spell |
+| `HoldItem` | 3 | wand held low at the side |
+| `UnEquipItem` | 2 | putting the wand away, about 0.25 s |
+| `HideItem` | 9 | wand put away |
+
+Raising the wand goes to 12; lowering it goes 12 → 2 → 9, or 12 → 3 when it
+stays in hand. A cast goes to 7, then back to 12 or 3.
+
+`hogwarts.wand` (`shared/src/hogwarts/wand.lua`) reports only the player's
+wand and skips repeated states:
+
+```lua
+local Wand = require("hogwarts.wand")
+
+local unsubscribe = Wand.subscribe({
+	changed = function(state, last) end, -- Wand.State.RAISED, CASTING, HOLD, UNEQUIP, HIDDEN
+})
+Wand.isRaised()
+Wand.state() -- nil until the first change after the hook is installed
+```

@@ -5,8 +5,7 @@
 -- `RiderCharacter` is the rider and `CreatureMountType` the kind. The controller
 -- may possess the mount itself; otherwise mounts are scanned. Either way the
 -- player must still report being on a mount: a broom keeps its MountedCharacter
--- after the rider drops off it. The creature-mount path follows the dumped types
--- and is not yet verified in game.
+-- after the rider drops off it.
 
 local Lookup = require("ue4ss.lookup")
 

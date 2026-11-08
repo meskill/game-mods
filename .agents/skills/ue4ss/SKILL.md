@@ -11,11 +11,18 @@ For project tooling, consult `CONTRIBUTING.md`; also use the `lua` skill for Lua
 
 ## Lua mods
 
-- Follow the [Lua mod guide](https://docs.ue4ss.com/guides/creating-a-lua-mod.html). The deployed entry point is `Mods/<ModName>/Scripts/main.lua`; load additional modules with `require`. Preserve the repository's source layout separately from the deployment layout.
-- Enable the mod with `<ModName> : 1` in `Mods/mods.txt`. An empty `enabled.txt` in the mod folder is an alternative, but does not provide load ordering.
-- Use UE4SS object lookup and lifecycle callbacks to find game objects. [RegisterHook](https://docs.ue4ss.com/lua-api/global-functions/registerhook.html) requires the target UFunction to be loaded already; verify its full path and callback contract before hooking. Check object validity before use and dispatch game-thread work with `ExecuteInGameThread` when needed.
-- UE4SS supplies these APIs inside the game, not in standalone Lua. Reload Lua changes through the GUI console's **Restart All Mods**, then exercise the actual game action and inspect mod-prefixed logs. Static checks alone do not prove hooks work.
-- To check in game which reflected functions run, with which arguments, and which values change, use the development mod in `engines/ue4ss/devtools/` (see its README): the game devtools mod's local, VCS-ignored `experiment-local.lua` (e.g. `games/hogwarts-legacy/devtools/src/experiment-local.lua`, deployed with `dist`) starts devtools with its options (`dir = "${EXPERIMENT_DATA_DIR}"`, which dist replaces with the mod's `experiment-data/` in the repository), and runs tracked experiments from `experiments/` with an API to hook, time and track calls and values; everything is logged with timestamps to `debug.log` there (e.g. `games/hogwarts-legacy/devtools/experiment-data/debug.log`), screenshots to `shots/`.
+### Development workflow
+
+When adding new functionality to the game.
+
+1. Make sure the game-specific types are present in the repo under `games/<game>/shared/types/dump`. If not, ask for a dump from UE4SS GUI (**Dumpers → Dump Lua Bindings** menu)
+2. Read `games/<game>/README.md` for existing solutions, code or approaches before starting from scratch.
+3. If new mod is needed add new mod to the `games/<game>/<mod_name>` and follow the repo rules.
+4. Plan the experiment: create or reuse `games/<game>/devtools` mod inside `experiment-local.lua` file that imports one or multiple tracked experiments from `./experiments` folder. The experiment based on raw types suggestions should figure out possible candidates for helpful handlers and add examine its state.
+5. Prepare the experiment's code and give the plan to the user or agent to run sequence of action in game to reproduce the desired behavior.
+6. After the experiment happened in game analyze debug.log and `shots` directory to came to conclusion and update the experiment
+7. Document the findings with the docs comment overrides in `games/<game>/shared/types/<title>` for specific functions or objects and update the README.md for the game. The docs should describe what happens on which events and how to use it properly.
+8. Write the code for the adding new functionality, considering putting the code for sharing in shared package.
 
 ## C++ mods
 
@@ -23,11 +30,5 @@ For project tooling, consult `CONTRIBUTING.md`; also use the `lua` skill for Lua
 - Set mod metadata in the constructor; defer Unreal API access until `on_unreal_init` or later. Use the matching SDK's lifecycle callbacks and clean up resources on unload.
 - Build against the matching UE4SS source/SDK and C runtime configuration; do not assume Debug/Release binaries or different SDK versions are interchangeable. Consult that checkout's build instructions rather than copying old build flags.
 - [Deploy](https://docs.ue4ss.com/guides/installing-a-c%2B%2B-mod.html) the DLL as `Mods/<ModName>/dlls/main.dll` and enable it as above. Rebuild and restart the game to verify native changes; do not assume Lua reload replaces a DLL.
-
-## API and type sources
-
-- **Lua API:** search the [API reference](https://docs.ue4ss.com/lua-api.html), then read the individual function/class page. The aggregate overview explicitly warns that it is incomplete and can lag behind those pages.
-- **Lua API types:** use `Mods/shared/Types.lua` from the matching development release; upstream source is [assets/Mods/shared/Types.lua](https://raw.githubusercontent.com/UE4SS-RE/RE-UE4SS/main/assets/Mods/shared/Types.lua). Select the corresponding tag/commit instead of assuming `main` matches the game installation.
-- **Game-specific Lua types:** in the UE4SS GUI, choose **Dumpers → Dump Lua Bindings**. Output goes to `Mods/shared/types`; see the [bindings guide](https://docs.ue4ss.com/guides/using-custom-lua-bindings.html). Include these and API definitions in the editor's type-library search paths (`workspace.library` in `.luarc.json`), preserving existing Lux libraries. Never `require` or execute type stubs: they can overwrite UE4SS globals.
-- **C++ API/types:** inspect headers in the matching UE4SS checkout, starting with [CppUserModBase.hpp](https://raw.githubusercontent.com/UE4SS-RE/RE-UE4SS/main/UE4SS/include/Mod/CppUserModBase.hpp) and the `Unreal/UObject*` headers used by the C++ guide. Use those declarations for exact signatures.
-- **Game classes and function paths:** inspect Live View and the [object/header dumpers](https://docs.ue4ss.com/feature-overview/dumpers.html) in the target game. Generated C++ headers describe reflected game types, not a guaranteed ABI-safe SDK; UHT headers are for mirror Unreal projects. Do not invent paths, offsets, or memory layouts from another game's examples.
+- inspect headers in the matching UE4SS checkout, starting with [CppUserModBase.hpp](https://raw.githubusercontent.com/UE4SS-RE/RE-UE4SS/main/UE4SS/include/Mod/CppUserModBase.hpp) and the `Unreal/UObject*` headers used by the C++ guide. Use those declarations for exact signatures.
+- inspect Live View and the [object/header dumpers](https://docs.ue4ss.com/feature-overview/dumpers.html) in the target game. Generated C++ headers describe reflected game types, not a guaranteed ABI-safe SDK; UHT headers are for mirror Unreal projects. Do not invent paths, offsets, or memory layouts from another game's examples.

@@ -1,269 +1,278 @@
--- Spell casts of the local player's wand, sampled from its active spell tool.
+-- Spell casts of the local player's wand, reported by game hooks as they happen.
 --
--- A held cast is `IsStopped()` false: in game logs it stays false for the whole
--- cast (~300-500 ms, longer while held). The cast fires when `IsStarted_K2()` is
--- sampled true (it is true for less than a sample, so rarely seen), when a new
--- `GetActiveMunition()` projectile appears, or, failing both, when the cast ends.
--- A fired cast lasts while its projectile is alive, capped at MAX_LIFETIME.
+-- Hooked `/Script/Phoenix.SpellTool` functions:
+-- * `Start`: a spell tool starts a cast. Only the player character's casts
+--   count (`GetCharacter()` is an `ABiped_Player`); the basic wand attack runs as
+--   the `Stupefy` tool and cancels the current cast without starting one.
+-- * `OnMunitionFired`: the cast's spell fired a projectile.
+-- * `OnMunitionImpact`: a projectile of the cast's spell hit something.
+-- * `OnMunitionDestroyed`: a projectile of the cast's spell is gone; ends the
+--   cast, except an upgraded Incendio's (below).
+-- * `OnStop`: the cast's spell stopped; ends a cast that fired no projectile.
+--
+-- Events on the cast's spell tool are matched by its address, not by projectile.
+-- None of the hooks is confirmed in the current game build ("Fix Bugged Biscuit
+-- Quest" hooked `Start` in 2023). An event whose hook never runs goes unreported;
+-- without the ending hooks, a cast lasts until the next one or `pause()`.
+--
+-- The upgraded Incendio (`HasUpgradedMechanics()`) leaves a ring of fire: an
+-- area actor (`IncendioSpellTool.CurrentAOE`) spawned just after `Start` that
+-- burns about 0.75 s, until it stops ticking or its lifetime runs out. No hook
+-- marks that, so for such a cast only the tracker polls the area actor every
+-- FIRE_POLL_MS and ends the cast once it burns out, or after FIRE_MAX_POLLS.
+-- The base Incendio leaves no fire and ends with its fireball.
 
----Why a fired cast ended.
----@alias HogwartsSpellEnd
----| "gone" # Its projectile disappeared, or the spell had none.
----| "capped" # MAX_LIFETIME passed while the projectile still reported alive.
----| "replaced" # The same spell fired again.
----| "cancelled" # The pawn, wand, or active spell changed.
----| "interrupted" # The tracker's owner called interrupt().
+local Loop = require("ue4ss.loop")
 
----@class HogwartsSpellCast
----@field name string Lowercased `DatabaseName`, e.g. "incendio".
----@field firedAt number The `now` of the sample that saw it fire.
+local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
+local INCENDIO_CLASS = "/Script/Phoenix.IncendioSpellTool"
 
----Callbacks run inside `update()` and `interrupt()`, in event order.
----@class HogwartsSpellListener
----@field fired? fun(cast: HogwartsSpellCast) The cast left the wand.
----@field impact? fun(cast: HogwartsSpellCast) Its projectile moved, then stopped; at most once per cast.
----@field ended? fun(cast: HogwartsSpellCast, reason: HogwartsSpellEnd) No further events follow for this cast.
+local FIRE_POLL_MS = 100
+-- Polls before giving up on a fire that never appears or never burns out.
+local FIRE_MAX_POLLS = 30
 
 -- The basic wand attack runs as this spell tool. It is not a spell cast.
 ---@type table<string, true?>
 local BASIC_CASTS = { stupefy = true }
-
--- Cap on a fired cast: pooled munitions may never report destruction.
-local MAX_LIFETIME = 3
-
--- Squared speed (cm/s) below which a projectile counts as stopped.
-local STOPPED_SPEED_SQUARED = 1
 
 -- DatabaseName is a UE4SS FName wrapper, not a Lua string.
 local function nameText(value)
 	return value:ToString()
 end
 
----Identity and lifecycle flags of the sampled spell, for change logging only.
----@param wandAddress integer
----@param spell ASpellTool?
----@return string
-local function describe(wandAddress, spell)
-	if not spell then
-		return ("wand=%X spell=none"):format(wandAddress)
-	end
-	local ok, text = pcall(function()
-		return ("wand=%X spell=%X database=%s type=%s started=%s stopped=%s channeling=%s"):format(
-			wandAddress,
-			spell:GetAddress(),
-			nameText(spell.DatabaseName),
-			nameText(spell:GetSpellType()),
-			tostring(spell:IsStarted_K2()),
-			tostring(spell:IsStopped()),
-			tostring(spell:IsChanneling())
-		)
-	end)
-	return ok and text or ("wand=%X spell read error: %s"):format(wandAddress, tostring(text))
-end
+---Why a fired cast ended.
+---@alias HogwartsSpellEnd
+---| "gone" # Its projectile was destroyed (an Incendio's fire burned out), or its spell stopped without firing one.
+---| "replaced" # Another spell fired; its `fired` follows.
+---| "cancelled" # The player started the basic wand attack.
+---| "interrupted" # The tracker's owner called pause().
 
----The spell's projectile while it is still in flight.
----@param spell ASpellTool
----@return AMunitionType_Base?
-local function liveMunition(spell)
-	local munition = spell:GetActiveMunition()
-	if munition and munition:IsValid() and not munition:IsActorBeingDestroyed() then
-		return munition
-	end
-	return nil
-end
+---@class HogwartsSpellCast
+---@field name string Lowercased `DatabaseName`, e.g. "incendio".
 
----Tracks the local player's active wand spell and reports its casts.
+---Callbacks run inside the hooks, on the game thread, in event order.
+---@class HogwartsSpellListener
+---@field fired? fun(cast: HogwartsSpellCast) The cast left the wand.
+---@field impact? fun(cast: HogwartsSpellCast) Its projectile hit something; at most once per cast.
+---@field ended? fun(cast: HogwartsSpellCast, reason: HogwartsSpellEnd) No further events follow for this cast.
+
+---Reports the local player's spell casts from game hooks.
 ---@class HogwartsSpellTracker
 ---@field private listener HogwartsSpellListener
 ---@field private log? fun(message: string)
----@field private pawn integer
----@field private wand integer
----@field private spell integer
----@field private casting boolean
----@field private armed boolean A cast is held but has not fired yet.
----@field private armedMunition integer Projectile address when the cast began.
+---@field private active boolean Hooked events are reported; see resume().
 ---@field private cast? HogwartsSpellCast The fired cast that has not ended.
----@field private munition integer Address of the cast's live projectile, or 0.
----@field private moved boolean The current projectile has been seen moving.
+---@field private castSpell integer Address of the spell tool that fired the cast.
+---@field private launched boolean The cast fired a projectile.
 ---@field private impacted boolean The cast's impact has been reported.
----@field private lifecycle? string Last logged spell identity and lifecycle flags.
+---@field private fire? table Token of the running fire poll; replaced or cleared to stop it.
 local Tracker = {}
 Tracker.__index = Tracker
 
-local Spells = {}
+---Report hooked events, e.g. while the player is on foot in gameplay.
+function Tracker:resume()
+	self.active = true
+end
+
+---Ignore hooked events and end the fired cast, e.g. while gameplay is paused.
+function Tracker:pause()
+	self.active = false
+	self:finish("interrupted")
+end
+
+---Polls an upgraded Incendio's new area actor until it burns out, then ends
+---the cast. Stops when the cast ends for any other reason.
+---@private
+---@param incendio AIncendioSpellTool
+function Tracker:watchFire(incendio)
+	local before = incendio.CurrentAOE
+	local beforeAddress = before and before:IsValid() and before:GetAddress() or 0
+	local token, polls = {}, 0
+	self.fire = token
+	Loop.gameThread(FIRE_POLL_MS, function()
+		if self:fireStopped(token) then
+			return true
+		end
+		polls = polls + 1
+		local area = incendio:IsValid() and incendio.CurrentAOE or nil
+		local spawned = area ~= nil and area:IsValid() and area:GetAddress() ~= beforeAddress
+		---@cast area AMunitionType_AOE_MultiFX
+		local burnedOut = spawned and (not area:IsActorTickEnabled() or area:GetRemainingLifeTime() <= 0)
+		if burnedOut or polls >= FIRE_MAX_POLLS then
+			self:finish("gone")
+			return true
+		end
+		return false
+	end, function(message)
+		if self.log then
+			self.log("spell fire poll failed: " .. message)
+		end
+	end)
+end
+
+---Whether the fire poll identified by `token` should stop: its cast ended or
+---another poll replaced it.
+---@private
+---@param token table
+---@return boolean
+function Tracker:fireStopped(token)
+	return self.fire ~= token
+end
 
 ---@param listener HogwartsSpellListener
----@param log? fun(message: string) Receives spell-state transitions and cast decisions.
+function Tracker:listen(listener)
+	self.listener = listener
+end
+
+local Spells = {}
+
+---Registers the spell hooks and returns their tracker. Call once, when the mod
+---loads; the hooks stay registered while it runs. The tracker starts paused and
+---without a listener.
+---@param warn fun(message: string) Receives hooks that could not be registered.
+---@param log? fun(message: string) Receives cast events.
 ---@return HogwartsSpellTracker
-function Spells.tracker(listener, log)
-	return setmetatable({
-		listener = listener,
+function Spells.tracker(warn, log)
+	---@type HogwartsSpellTracker
+	local tracker = setmetatable({
+		listener = {},
 		log = log,
-		pawn = 0,
-		wand = 0,
-		spell = 0,
-		casting = false,
-		armed = false,
-		armedMunition = 0,
-		munition = 0,
-		moved = false,
+		active = false,
+		castSpell = 0,
+		launched = false,
 		impacted = false,
 	}, Tracker)
+
+	---@param name string
+	---@param handler fun(tracker: HogwartsSpellTracker, spell: ASpellTool)
+	local function register(name, handler)
+		local path = "/Script/Phoenix.SpellTool:" .. name
+		local function hook(context)
+			-- UE4SS passes the hooked object wrapped, unlike Types.lua's `self: UObject`.
+			---@cast context RemoteUnrealParam<ASpellTool>
+			Tracker.handle(tracker, handler, context)
+		end
+		local ok, err = pcall(RegisterHook, path, hook)
+		if not ok then
+			warn(("Hook %s unavailable: %s"):format(path, tostring(err)))
+		end
+	end
+	register("Start", Tracker.started)
+	register("OnMunitionFired", Tracker.munitionFired)
+	register("OnMunitionImpact", Tracker.munitionImpact)
+	register("OnMunitionDestroyed", Tracker.munitionDestroyed)
+	register("OnStop", Tracker.stopped)
+	return tracker
 end
 
 ---@private
 ---@param reason HogwartsSpellEnd
----@param now? number
-function Tracker:finish(reason, now)
+function Tracker:finish(reason)
 	local cast = self.cast
 	if not cast then
 		return
 	end
-	self.cast = nil
+	self.cast, self.fire = nil, nil
 	if self.log then
-		self.log(
-			("spell ended database=%s %s%s"):format(
-				cast.name,
-				reason,
-				now and (" after %.2f s"):format(now - cast.firedAt) or ""
-			)
-		)
+		self.log(("spell ended database=%s %s"):format(cast.name, reason))
 	end
 	if self.listener.ended then
 		self.listener.ended(cast, reason)
 	end
 end
 
----End the fired cast, e.g. while gameplay is paused. The last observed spell
----state is kept, so resuming does not replay a cast that was already active.
-function Tracker:interrupt()
-	self:finish("interrupted")
+---@private
+---@param spell ASpellTool
+---@return boolean
+function Tracker:owns(spell)
+	return self.cast ~= nil and spell:GetAddress() == self.castSpell
 end
 
----Sample the pawn's active spell and report what happened since the last sample.
----@param pawn ABiped_Player
----@param now number Seconds, used for the lifetime cap and logs.
-function Tracker:update(pawn, now)
-	local wand = pawn:GetWand()
-	local wandAddress = 0
-	---@type ASpellTool?
-	local spell
-	if wand and wand:IsValid() then
-		wandAddress = wand:GetAddress()
-		spell = wand:GetActiveSpellTool()
+---@private
+---@param spell ASpellTool
+function Tracker:started(spell)
+	local character = spell:GetCharacter()
+	if not character or not character:IsValid() or not character:IsA(PLAYER_CLASS) then
+		return
 	end
-	---@type string?
-	local name
-	if spell and spell:IsValid() then
-		name = nameText(spell.DatabaseName):lower()
-	else
-		spell = nil
+	local name = nameText(spell.DatabaseName):lower()
+	if BASIC_CASTS[name] then
+		self:finish("cancelled")
+		return
 	end
-	local tracked = spell
-	if name and BASIC_CASTS[name] then
-		tracked = nil
-	end
-	local spellAddress = 0
-	local casting, started = false, false
-	local munitionAddress = 0
-	---@type AMunitionType_Base?
-	local munition
-	if tracked then
-		spellAddress = tracked:GetAddress()
-		casting = not tracked:IsStopped()
-		started = tracked:IsStarted_K2()
-		munition = liveMunition(tracked)
-		munitionAddress = munition and munition:GetAddress() or 0
-	end
-	local pawnAddress = pawn:GetAddress()
-	local changed = pawnAddress ~= self.pawn or wandAddress ~= self.wand or spellAddress ~= self.spell
-	local castBegan = casting and (changed or not self.casting)
-	local castEnded = not casting and self.casting and not changed
-	self.pawn, self.wand, self.spell, self.casting = pawnAddress, wandAddress, spellAddress, casting
+	self:finish("replaced")
+	local cast = { name = name }
+	self.cast, self.castSpell, self.launched, self.impacted = cast, spell:GetAddress(), false, false
+	local watch = spell:IsA(INCENDIO_CLASS) and spell:HasUpgradedMechanics()
 	if self.log then
-		local lifecycle = describe(wandAddress, spell)
-		if lifecycle ~= self.lifecycle then
-			self.lifecycle = lifecycle
-			self.log(("spell state pawn=%X %s"):format(pawnAddress, lifecycle))
-		end
+		self.log(("spell fired database=%s spell=%X"):format(name, self.castSpell))
 	end
+	if self.listener.fired then
+		self.listener.fired(cast)
+	end
+	if watch then
+		---@cast spell AIncendioSpellTool
+		self:watchFire(spell)
+	end
+end
 
-	if changed then
-		if self.armed and self.log then
-			self.log("cast cancelled: pawn, wand, or spell changed")
-		end
-		self.armed = false
-		self:finish("cancelled", now)
-	end
-	if castBegan then
-		self.armed, self.armedMunition = true, munitionAddress
+---@private
+---@param spell ASpellTool
+function Tracker:munitionFired(spell)
+	if self:owns(spell) and not self.launched then
+		self.launched = true
 		if self.log then
-			self.log("cast held")
+			self.log("spell projectile fired")
 		end
 	end
+end
 
-	local fired = false
-	local newProjectile = munitionAddress ~= 0 and munitionAddress ~= self.armedMunition
-	if self.armed and tracked and name and (started or newProjectile or castEnded) then
-		self.armed, fired = false, true
-		self:finish("replaced", now)
-		if self.log then
-			self.log(
-				("spell fired database=%s via %s"):format(
-					name,
-					started and "started" or newProjectile and "projectile" or "cast end"
-				)
-			)
-		end
-		self.cast = { name = name, firedAt = now }
-		self.munition, self.moved, self.impacted = 0, false, false
-		if self.listener.fired then
-			self.listener.fired(self.cast)
-		end
-	end
-
+---@private
+---@param spell ASpellTool
+function Tracker:munitionImpact(spell)
 	local cast = self.cast
-	if not cast then
-		return
-	end
-	if munitionAddress ~= self.munition then
-		self.munition, self.moved = munitionAddress, false
+	if cast and self:owns(spell) and not self.impacted then
+		self.impacted = true
 		if self.log then
-			self.log(
-				munition
-						and ("projectile %X %s life=%s"):format(
-							munitionAddress,
-							munition:GetFullName(),
-							tostring(munition:GetRemainingLifeTime())
-						)
-					or ("projectile gone after %.2f s"):format(now - cast.firedAt)
-			)
+			self.log("spell projectile hit")
+		end
+		if self.listener.impact then
+			self.listener.impact(cast)
 		end
 	end
-	if munition and not self.impacted then
-		-- Only a projectile seen moving can stop: it may spawn before launch.
-		local velocity = munition:GetVelocity()
-		local moving = velocity.X * velocity.X + velocity.Y * velocity.Y + velocity.Z * velocity.Z
-			>= STOPPED_SPEED_SQUARED
-		if self.moved and not moving then
-			self.impacted = true
-			if self.log then
-				self.log(("projectile stopped after %.2f s"):format(now - cast.firedAt))
-			end
-			if self.listener.impact then
-				self.listener.impact(cast)
-			end
+end
+
+---@private
+---@param spell ASpellTool
+function Tracker:munitionDestroyed(spell)
+	if self:owns(spell) then
+		if self.fire then
+			-- watchFire() ends it once the fire burns out.
+			return
 		end
-		self.moved = self.moved or moving
+		self:finish("gone")
 	end
-	-- The fire sample always reports the cast; later samples need the projectile.
-	if fired then
+end
+
+---@private
+---@param spell ASpellTool
+function Tracker:stopped(spell)
+	if self:owns(spell) and not self.launched then
+		self:finish("gone")
+	end
+end
+
+---Runs `handler` for a hooked call while events are reported.
+---@private
+---@param handler fun(tracker: HogwartsSpellTracker, spell: ASpellTool)
+---@param context RemoteUnrealParam<ASpellTool>
+function Tracker:handle(handler, context)
+	if not self.active then
 		return
 	end
-	if munitionAddress == 0 then
-		self:finish("gone", now)
-	elseif now >= cast.firedAt + MAX_LIFETIME then
-		self:finish("capped", now)
+	local spell = context:get()
+	if spell:IsValid() then
+		handler(self, spell)
 	end
 end
 
