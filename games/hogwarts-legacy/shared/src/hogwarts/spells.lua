@@ -60,7 +60,6 @@ end
 ---Reports the local player's spell casts from game hooks.
 ---@class HogwartsSpellTracker
 ---@field private listener HogwartsSpellListener
----@field private log? fun(message: string)
 ---@field private active boolean Hooked events are reported; see resume().
 ---@field private cast? HogwartsSpellCast The fired cast that has not ended.
 ---@field private castSpell integer Address of the spell tool that fired the cast.
@@ -126,14 +125,12 @@ local Spells = {}
 ---Registers the spell hooks and returns their tracker. Call once, when the mod
 ---loads; the hooks stay registered while it runs. The tracker starts paused and
 ---without a listener.
----@param warn fun(message: string) Receives hooks that could not be registered.
----@param log? fun(message: string) Receives cast events.
+---@param warn fun(message: string) Receives hooks that could not be registered and fire poll errors.
 ---@return HogwartsSpellTracker
-function Spells.tracker(warn, log)
+function Spells.tracker(warn)
 	---@type HogwartsSpellTracker
 	local tracker = setmetatable({
 		listener = {},
-		log = log,
 		active = false,
 		castSpell = 0,
 		launched = false,
@@ -144,9 +141,7 @@ function Spells.tracker(warn, log)
 	Loop.gameThread(FIRE_POLL_MS, function()
 		Tracker.pollFire(tracker)
 	end, function(message)
-		if log then
-			log("spell fire poll failed: " .. message)
-		end
+		warn("Spell fire poll failed: " .. message)
 	end)
 
 	---@param name string
@@ -179,9 +174,6 @@ function Tracker:finish(reason)
 		return
 	end
 	self.cast, self.fire = nil, nil
-	if self.log then
-		self.log(("spell ended database=%s %s"):format(cast.name, reason))
-	end
 	if self.listener.ended then
 		self.listener.ended(cast, reason)
 	end
@@ -210,9 +202,6 @@ function Tracker:started(spell)
 	local cast = { name = name }
 	self.cast, self.castSpell, self.launched, self.impacted = cast, spell:GetAddress(), false, false
 	local watch = spell:IsA(INCENDIO_CLASS) and spell:HasUpgradedMechanics()
-	if self.log then
-		self.log(("spell fired database=%s spell=%X"):format(name, self.castSpell))
-	end
 	if self.listener.fired then
 		self.listener.fired(cast)
 	end
@@ -225,11 +214,8 @@ end
 ---@private
 ---@param spell ASpellTool
 function Tracker:munitionFired(spell)
-	if self:owns(spell) and not self.launched then
+	if self:owns(spell) then
 		self.launched = true
-		if self.log then
-			self.log("spell projectile fired")
-		end
 	end
 end
 
@@ -239,9 +225,6 @@ function Tracker:munitionImpact(spell)
 	local cast = self.cast
 	if cast and self:owns(spell) and not self.impacted then
 		self.impacted = true
-		if self.log then
-			self.log("spell projectile hit")
-		end
 		if self.listener.impact then
 			self.listener.impact(cast)
 		end

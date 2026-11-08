@@ -81,7 +81,8 @@ EFFECTS.depulsomaxima = EFFECTS.depulso
 EFFECTS.glaciusmaxima = EFFECTS.glacius
 EFFECTS.reparomaxima = EFFECTS.reparo
 
--- Any other fired spell still gets feedback; its logged database name identifies it.
+-- Any other fired spell still gets feedback. The devtools spells experiment
+-- logs each cast's database name, to add it above.
 ---@type HogwartsTriggerEffect
 local DEFAULT_EFFECT = { mode = Mode.FEEDBACK, args = { 2, 3 } }
 
@@ -95,17 +96,12 @@ local WAND_EFFECT = { revelio = true, protego = true }
 ---Fire effect for a cast's lowercased `DatabaseName`, or nil when R2 should
 ---keep the wand's effect.
 ---@param name string
----@return HogwartsTriggerEffect? effect
----@return "matched"|"default"|"wand" source
+---@return HogwartsTriggerEffect?
 function Spells.effect(name)
 	if WAND_EFFECT[name] then
-		return nil, "wand"
+		return nil
 	end
-	local effect = EFFECTS[name]
-	if effect then
-		return effect, "matched"
-	end
-	return DEFAULT_EFFECT, "default"
+	return EFFECTS[name] or DEFAULT_EFFECT
 end
 
 return Spells

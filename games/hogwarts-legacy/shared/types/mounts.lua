@@ -7,24 +7,54 @@
 
 ---A broom in flight: a pawn (`AFlyingBroom : APawn`). While the player rides it,
 ---the player controller may possess the broom instead of the player.
+---Seen in game: summoning spawns two brooms, a `BP_FlyingBroomProp_<Broom>_C`
+---prop that scales in and out, and the `BP_FlyingBroomCapsule_<Broom>_C` pawn
+---the player rides, whose getters report the flight.
 ---@class AFlyingBroom
 ---@field MountedCharacter APawn The character riding the broom. Seen in game: it still points at the rider after they drop off the broom.
+---@field pBoostTriggerEffect UTriggerEffect Seen in game: null.
+---@field pSpeedUpTriggerEffect UTriggerEffect Seen in game: null.
+---@field pInactiveTriggerEffect UTriggerEffect Seen in game: null.
 local AFlyingBroom = {}
 
+---Puts the player on the broom. Seen in game: runs on the ridden broom when
+---the player mounts, together with `AttachPlayerToBroomOnMount`, about 0.6 s
+---after the player reports being on a mount.
+---@param BipedPlayer ABiped_Player
+function AFlyingBroom:SetupPlayerOnBroom(BipedPlayer) end
+
+---Takes the player off the broom. Seen in game: runs on the ridden broom the
+---moment the rider leaves it; the broom's getters stop reporting the flight
+---right after, while the player still reports being on a mount for about 2 s.
+---@param BipedPlayer ABiped_Player
+---@param BroomProp AFlyingBroom
+---@param VelocityDamping float
+function AFlyingBroom:DetachPlayerFromBroomOnDismount(BipedPlayer, BroomProp, VelocityDamping) end
+
 ---Current fill of the broom's boost (nitro) meter, between 0 and `GetMaxBoostMeter()`.
----Seen in game: after running out, the first part of the meter refills quickly.
+---Seen in game: after running out it refills in about 12 s, the first tenth
+---after about 3 s.
 ---@return float
 function AFlyingBroom:GetBoostMeterAmount() end
 
----Capacity of the broom's boost meter.
+---Capacity of the broom's boost meter. Seen in game: 0 once the rider has left.
 ---@return float
 function AFlyingBroom:GetMaxBoostMeter() end
 
----Whether the broom is boosting.
+---Whether the broom is boosting. Seen in game: true while the broom tail
+---flames; it turns false 0.6 s after the meter runs out.
 ---@return boolean
 function AFlyingBroom:IsInBoost() end
 
----Whether the broom's boost meter is refilling.
+---Whether the broom flies slowly. Seen in game: false from the moment the
+---player speeds up or boosts until they let go.
+---@return boolean
+function AFlyingBroom:IsInHoverMode() end
+
+---Seen in game: turns true when the player lets go of boost and false when
+---they boost again; while true the meter refills, even though `IsInBoost()`
+---stays true for the boost's last seconds. It stays false while the meter
+---refills after running out.
 ---@return boolean
 function AFlyingBroom:IsBoostRecharging() end
 

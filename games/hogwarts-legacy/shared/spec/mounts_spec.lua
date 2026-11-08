@@ -2,6 +2,7 @@ local Mounts = require("hogwarts.mounts")
 
 local BROOM_CLASS = "/Script/Phoenix.FlyingBroom"
 local CREATURE_CLASS = "/Script/Phoenix.Creature_Character"
+local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
 
 local function actor(address, class)
 	local object = { address = address, class = class, valid = true }
@@ -14,25 +15,16 @@ local function actor(address, class)
 	function object:IsA(name)
 		return name == self.class
 	end
-	function object:GetFullName()
-		return tostring(self.class)
-	end
 	return object
 end
 
 local function player()
-	local pawn = actor(0x10, "/Script/Phoenix.Biped_Player")
+	local pawn = actor(0x10, PLAYER_CLASS)
 	pawn.onMount = false
 	function pawn:GetIsOnAMountOrInTransition()
 		return self.onMount
 	end
 	return pawn
-end
-
-local function broom(address, rider)
-	local object = actor(address, BROOM_CLASS)
-	object.MountedCharacter = rider
-	return object
 end
 
 local function creature(address, rider, mountType)
@@ -49,115 +41,179 @@ local function creature(address, rider, mountType)
 	return object, handler
 end
 
----Tracker whose events are recorded as "mounted kind" / "dismounted kind".
-local function recorded()
-	local events = {}
-	local tracker = Mounts.tracker({
-		mounted = function(mount)
-			events[#events + 1] = "mounted " .. mount.kind
+---A UE4SS hook parameter holding `value`.
+local function param(value)
+	return {
+		get = function()
+			return value
 		end,
-		dismounted = function(mount)
-			events[#events + 1] = "dismounted " .. mount.kind
-		end,
-	})
-	return tracker, events
+	}
 end
 
 describe("hogwarts.mounts", function()
-	local brooms, handlers
+	---@type table<string, function>
+	local hooked
+	local handlers
+	---The tracker's game-thread loop; one tick is one poll.
+	local tick
+	---What the tracker's player function returns: the game state polls see.
+	local pawn, controller
+
 	before_each(function()
-		brooms, handlers = {}, {}
+		hooked, handlers, tick = {}, {}, nil
+		pawn = player()
+		controller = { Pawn = pawn }
+		_G.RegisterHook = function(path, callback)
+			hooked[path] = callback
+			return 1, 2
+		end
+		_G.LoopInGameThreadWithDelay = function(_, callback)
+			tick = callback
+			return 1
+		end
 		_G.FindAllOf = function(class)
-			if class == "FlyingBroom" then
-				return brooms
-			end
-			if class == "CreatureMountHandler" then
-				return handlers
-			end
-			return nil
+			return class == "CreatureMountHandler" and handlers or nil
 		end
 	end)
+
 	after_each(function()
-		_G.FindAllOf = nil
+		_G.RegisterHook, _G.LoopInGameThreadWithDelay, _G.FindAllOf = nil, nil, nil
 	end)
 
-	it("reports a possessed broom until the controller leaves it", function()
-		local pawn = player()
-		local ridden = broom(0x20, pawn)
-		local controller = { Pawn = ridden }
-		local tracker, events = recorded()
+	local function inGameplay()
+		return pawn, controller
+	end
 
-		local mount = tracker:update(pawn, controller, 0)
-		assert.equals(ridden, mount and mount.actor)
+	---Runs the hook on FlyingBroom:`name` as the game would.
+	local function call(name, broom, rider)
+		hooked["/Script/Phoenix.FlyingBroom:" .. name](param(broom), param(rider))
+	end
+
+	---Tracker whose events are recorded as "<event> <kind>".
+	---@param player? function Defaults to the player always in gameplay.
+	local function recorded(player)
+		local events = {}
+		local tracker = Mounts.tracker(error, player or inGameplay)
+		local function record(event)
+			return function(mount)
+				events[#events + 1] = event .. " " .. mount.kind
+			end
+		end
+		tracker:listen({ mounted = record("mounted"), riding = record("riding"), dismounted = record("dismounted") })
+		return tracker, events
+	end
+
+	it("reports the player's broom from mounting until dismounting, riding on each poll", function()
+		local tracker, events = recorded()
+		local broom = actor(0x20, BROOM_CLASS)
+
+		call("SetupPlayerOnBroom", broom, pawn)
+		assert.equals(broom, tracker:current().actor)
+		tick()
+		tick()
+		call("DetachPlayerFromBroomOnDismount", broom, pawn)
+		tick()
+
+		assert.is_nil(tracker:current())
+		assert.same({ "mounted broom", "riding broom", "riding broom", "dismounted broom" }, events)
+	end)
+
+	it("ignores brooms set up for other characters and other brooms' dismounts", function()
+		local tracker, events = recorded()
+		local broom = actor(0x20, BROOM_CLASS)
+
+		call("SetupPlayerOnBroom", actor(0x21, BROOM_CLASS), actor(0x11, "/Script/Phoenix.Biped_Character"))
+		call("SetupPlayerOnBroom", broom, pawn)
+		call("SetupPlayerOnBroom", broom, pawn)
+		call("DetachPlayerFromBroomOnDismount", actor(0x21, BROOM_CLASS), pawn)
+
+		assert.equals(broom, tracker:current().actor)
 		assert.same({ "mounted broom" }, events)
-
-		controller.Pawn = pawn
-		assert.is_nil(tracker:update(pawn, controller, 0.1))
-		assert.same({ "mounted broom", "dismounted broom" }, events)
 	end)
 
-	it("finds an unpossessed broom only while the player reports a mount", function()
-		local pawn = player()
-		brooms[1] = broom(0x20, pawn)
-		local controller = { Pawn = pawn }
+	it("reports a dismount when the broom disappears without one", function()
 		local tracker, events = recorded()
+		local broom = actor(0x20, BROOM_CLASS)
+		call("SetupPlayerOnBroom", broom, pawn)
 
-		assert.is_nil(tracker:update(pawn, controller, 0))
-		pawn.onMount = true
-		assert.equals("broom", tracker:update(pawn, controller, 0.1).kind)
-
-		-- The broom keeps its rider after the player drops off.
-		pawn.onMount = false
-		assert.is_nil(tracker:update(pawn, controller, 0.2))
+		broom.valid = false
+		tick()
+		assert.is_nil(tracker:current())
 		assert.same({ "mounted broom", "dismounted broom" }, events)
 	end)
 
-	it("identifies a creature mount by its handler's mount type", function()
-		local pawn = player()
+	it("skips polls outside gameplay", function()
+		local active = false
+		local tracker, events = recorded(function()
+			if active then
+				return pawn, controller
+			end
+		end)
+		local broom = actor(0x20, BROOM_CLASS)
+		call("SetupPlayerOnBroom", broom, pawn)
+		broom.valid = false
+
+		tick()
+		assert.equals(broom, tracker:current().actor)
+		active = true
+		tick()
+		assert.same({ "mounted broom", "dismounted broom" }, events)
+	end)
+
+	it("warns about a hook it cannot register and keeps the other", function()
+		_G.RegisterHook = function(path, callback)
+			if path:find("Detach", 1, true) then
+				error("no UFunction " .. path)
+			end
+			hooked[path] = callback
+		end
+		local warnings = {}
+		local tracker = Mounts.tracker(function(message)
+			warnings[#warnings + 1] = message
+		end, inGameplay)
+
+		call("SetupPlayerOnBroom", actor(0x20, BROOM_CLASS), pawn)
+		assert.equals(1, #warnings)
+		assert.equals("broom", tracker:current().kind)
+	end)
+
+	it("identifies a possessed creature by its handler's mount type", function()
+		local tracker, events = recorded()
 		local graphorn = creature(0x30, pawn, 2)
-		local tracker, events = recorded()
+		controller.Pawn = graphorn
 
-		assert.equals(graphorn, tracker:update(pawn, { Pawn = graphorn }, 0).actor)
-		assert.same({ "mounted graphorn" }, events)
+		tick()
+		assert.equals(graphorn, tracker:current().actor)
+		assert.same({ "mounted graphorn", "riding graphorn" }, events)
 	end)
 
-	it("finds an unpossessed creature through the mount handlers", function()
-		local pawn = player()
-		pawn.onMount = true
-		local hippogriff, handler = creature(0x30, pawn, 3)
+	it("finds an unpossessed creature only while the player reports a mount", function()
+		local _, events = recorded()
+		local _, handler = creature(0x30, pawn, 3)
 		handlers[1] = handler
-		local tracker = recorded()
 
-		assert.equals(hippogriff, tracker:update(pawn, { Pawn = pawn }, 0).actor)
+		tick()
+		pawn.onMount = true
+		tick()
+		pawn.onMount = false
+		tick()
+		assert.same({ "mounted hippogriff", "riding hippogriff", "dismounted hippogriff" }, events)
 	end)
 
-	it("ignores a mount ridden by someone else", function()
-		local pawn = player()
-		pawn.onMount = true
-		brooms[1] = broom(0x20, actor(0x11, "/Script/Phoenix.Biped_Character"))
+	it("ignores a creature ridden by someone else", function()
 		local tracker, events = recorded()
+		pawn.onMount = true
+		local _, handler = creature(0x30, actor(0x11, "/Script/Phoenix.Biped_Character"), 2)
+		handlers[1] = handler
 
-		assert.is_nil(tracker:update(pawn, { Pawn = pawn }, 0))
+		tick()
+		assert.is_nil(tracker:current())
 		assert.same({}, events)
 	end)
 
-	it("reports a switch between mounts as a dismount, then a mount", function()
-		local pawn = player()
-		local first, second = broom(0x20, pawn), creature(0x30, pawn, 4)
-		local controller = { Pawn = first }
-		local tracker, events = recorded()
-
-		tracker:update(pawn, controller, 0)
-		controller.Pawn = second
-		tracker:update(pawn, controller, 0.1)
-		assert.same({ "mounted broom", "dismounted broom", "mounted hippogriff" }, events)
-	end)
-
-	it("resolves the rider of a possessed mount", function()
-		local pawn = player()
-		assert.equals(pawn, Mounts.rider(broom(0x20, pawn)))
-		assert.equals(pawn, Mounts.rider((creature(0x30, pawn, 5))))
+	it("resolves the rider of a possessed creature", function()
+		assert.equals(pawn, Mounts.rider((creature(0x30, pawn, 4))))
 		assert.is_nil(Mounts.rider(pawn))
-		assert.is_nil(Mounts.rider(broom(0x20, nil)))
+		assert.is_nil(Mounts.rider(actor(0x20, BROOM_CLASS)))
 	end)
 end)

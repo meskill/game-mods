@@ -20,16 +20,13 @@ local Mounts = require("mounts")
 local RIGHT_TRIGGER = AdaptiveTrigger.Trigger.Right
 local LEFT_TRIGGER = AdaptiveTrigger.Trigger.Left
 local POLL_INTERVAL_MS = 100
--- Logs gameplay, spell-state, and packet decisions.
----@type boolean
-local DEBUG = true
 
 local log = Log.new("[HogwartsDualSense]")
-local debugLog = Log.new("[HogwartsDualSense][debug]")
 
--- Spell hooks register at load, outside ExecuteAsync. The tracker reports casts
--- from inside them once the poll below resumes it with the player on foot.
-local spells = SpellCasts.tracker(log, DEBUG and debugLog or nil)
+-- Spell hooks register at load, outside ExecuteAsync. The spell tracker
+-- reports casts from inside them once the poll below resumes it with the
+-- player on foot.
+local spells = SpellCasts.tracker(log)
 
 -- The wand arm hook also registers at load; ExecuteAsync sets the handler once
 -- it can send effects.
@@ -60,41 +57,37 @@ local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 -- menus or travel have none, search at most once per second.
 local controllers = Lookup.new(1, Objects.playerController)
 
----Use the dumped Phoenix player type, not menu or spectator pawns.
----@return ABiped_Player? pawn The player pawn while gameplay is active.
----@return string state Why gameplay is inactive, or "active".
----@return APlayerController? controller The pawn's controller while active.
+---The player pawn and its controller while gameplay is active: not paused,
+---no cinematic, player alive. Uses the dumped Phoenix player type, not menu
+---or spectator pawns.
+---@return ABiped_Player? pawn
+---@return APlayerController? controller
 local function activePawn()
 	local controller = controllers:get(getTime()) --[[@as APlayerController?]]
 	if not controller then
-		return nil, "no valid controller"
+		return nil
 	end
 
 	local pawn = controller.Pawn
-	-- On a mount the controller may possess the mount; its rider is the player.
+	-- On a creature the controller may possess the mount; its rider is the player.
 	if pawn and pawn:IsValid() then
 		pawn = MountTracking.rider(pawn) or pawn
 	end
 	if not pawn or not pawn:IsValid() or not pawn:IsA("/Script/Phoenix.Biped_Player") then
-		return nil, "missing, invalid, or non-player pawn"
+		return nil
 	end
 	---@cast pawn ABiped_Player
 
 	local gameplay = Objects.gameplayStatics()
-	if not gameplay then
-		return nil, "no gameplay statics"
+	if not gameplay or gameplay:IsGamePaused(controller) or pawn.InCinematic or pawn:IsDead() then
+		return nil
 	end
-	if gameplay:IsGamePaused(controller) then
-		return nil, "paused"
-	end
-	if pawn.InCinematic then
-		return nil, "cinematic"
-	end
-	if pawn:IsDead() then
-		return nil, "dead"
-	end
-	return pawn, "active", controller
+	return pawn, controller
 end
+
+-- The broom hooks register and the mount poll starts at load, outside
+-- ExecuteAsync; ExecuteAsync sets the listener once it can send effects.
+local mounts = MountTracking.tracker(log, activePawn)
 
 -- Flow: find the DSX controller once, then every POLL_INTERVAL_MS on the game
 -- thread pick one effect per trigger (see update) and send it only when it changes.
@@ -124,20 +117,13 @@ ExecuteAsync(function()
 	end
 
 	local triggers = AdaptiveTrigger.new(server, index)
-	local mountEffects = Mounts.effects(DEBUG and debugLog or nil)
-	local mounts = MountTracking.tracker({
-		dismounted = function()
-			mountEffects:reset()
-		end,
-	}, DEBUG and debugLog or nil)
+	local mountEffects = Mounts.effects()
 	---@type table<DSXTrigger, table<HogwartsTriggerEffect, DSXInstruction[]>>
 	local packets = { [RIGHT_TRIGGER] = {}, [LEFT_TRIGGER] = {} }
 	-- L2 stays untouched until the broom first drives it.
 	---@type table<DSXTrigger, HogwartsTriggerEffect?>
 	local appliedEffects = {}
 	local stopped = false
-	---@type string?
-	local gameplayState
 	-- The last poll found the player on foot in gameplay, so R2 follows the wand.
 	local onFoot = false
 	local spellEndedAt = -math.huge
@@ -171,18 +157,6 @@ ExecuteAsync(function()
 			return false
 		end
 		appliedEffects[trigger] = effect
-		if DEBUG then
-			debugLog(
-				"sent "
-					.. (trigger == LEFT_TRIGGER and "L2" or "R2")
-					.. " mode="
-					.. effect.mode
-					.. " args={"
-					.. table.concat(effect.args, ",")
-					.. "} force="
-					.. tostring(force == true)
-			)
-		end
 		return true
 	end
 
@@ -219,10 +193,7 @@ ExecuteAsync(function()
 
 	spells:listen({
 		fired = function(cast)
-			local effect, source = Spells.effect(cast.name)
-			if DEBUG then
-				debugLog(("spell effect database=%s %s"):format(cast.name, source))
-			end
+			local effect = Spells.effect(cast.name)
 			if not effect then
 				-- A replaced cast already cleared its effect without re-applying R2.
 				endSpellEffect(false)
@@ -233,9 +204,7 @@ ExecuteAsync(function()
 			end
 			spellEffect = effect
 			-- A new cast must refresh even an identical effect.
-			if applyEffect(RIGHT_TRIGGER, effect, true) then
-				log("Spell effect: " .. cast.name)
-			end
+			applyEffect(RIGHT_TRIGGER, effect, true)
 		end,
 		impact = function()
 			if spellEffect and spellEffect.untilImpact then
@@ -247,51 +216,36 @@ ExecuteAsync(function()
 		end,
 	})
 
+	-- The mount tracker polls while the player is in gameplay and drives the
+	-- triggers while they ride; update() below leaves them alone then.
+	mounts:listen({
+		riding = function(mount)
+			local right, left = mountEffects:update(mount)
+			applyEffect(RIGHT_TRIGGER, right)
+			if left then
+				applyEffect(LEFT_TRIGGER, left)
+			elseif appliedEffects[LEFT_TRIGGER] then
+				applyEffect(LEFT_TRIGGER, OFF_EFFECT)
+			end
+		end,
+		dismounted = function()
+			mountEffects:reset()
+		end,
+	})
+
 	-- Arm changes apply at once instead of waiting for the next poll.
-	armChanged = function(state, last)
-		if DEBUG then
-			debugLog(("wand arm %s -> %d"):format(tostring(last), state))
-		end
+	armChanged = function()
 		if onFoot then
 			applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
 		end
 	end
 
-	-- DSX answers every datagram with its status; replies show whether it accepted
-	-- our trigger packets and still sees the controller.
-	local function logReplies()
-		while true do
-			local reply, replyError = server:receive()
-			if not reply then
-				if replyError ~= "timeout" then
-					debugLog("DSX reply error: " .. tostring(replyError))
-				end
-				return
-			end
-			debugLog(
-				"DSX reply Status="
-					.. tostring(reply.Status)
-					.. " connected="
-					.. tostring(reply.isControllerConnected)
-					.. " devices="
-					.. #(reply.Devices or {})
-			)
-		end
-	end
-
 	-- One poll. Priority, first match wins:
 	--   1. no active gameplay -> triggers off
-	--   2. riding a mount     -> mount effects (mounts.lua)
+	--   2. riding a mount     -> the mount tracker's `riding` drives the triggers
 	--   3. otherwise R2       -> spell fire effect, else hold vibration, else baseline
 	local function update()
-		if DEBUG then
-			logReplies()
-		end
-		local pawn, state, controller = activePawn()
-		if DEBUG and state ~= gameplayState then
-			debugLog("gameplay " .. state)
-		end
-		gameplayState = state
+		local pawn, controller = activePawn()
 		-- 1. Paused, cinematic, dead, or no player: end any cast and switch off.
 		if not pawn or not controller then
 			onFoot = false
@@ -302,19 +256,10 @@ ExecuteAsync(function()
 			end
 			return
 		end
-		local now = getTime()
-		-- 2. On a mount the wand and spells pause and the triggers follow the mount.
-		local mount = mounts:update(pawn, controller, now)
-		if mount then
+		-- 2. On a mount the wand and spells pause.
+		if mounts:current() then
 			onFoot = false
 			spells:pause()
-			local right, left = mountEffects:update(mount)
-			applyEffect(RIGHT_TRIGGER, right)
-			if left then
-				applyEffect(LEFT_TRIGGER, left)
-			elseif appliedEffects[LEFT_TRIGGER] then
-				applyEffect(LEFT_TRIGGER, OFF_EFFECT)
-			end
 			return
 		end
 		-- 3. On foot: L2 is unused, R2 follows the wand; spell hooks report casts.
@@ -323,7 +268,7 @@ ExecuteAsync(function()
 		if appliedEffects[LEFT_TRIGGER] then
 			applyEffect(LEFT_TRIGGER, OFF_EFFECT)
 		end
-		applyEffect(RIGHT_TRIGGER, wandEffect(now))
+		applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
 	end
 
 	Loop.gameThread(POLL_INTERVAL_MS, function()

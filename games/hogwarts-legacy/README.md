@@ -70,8 +70,8 @@ game thread; it starts paused.
 ```lua
 local Spells = require("hogwarts.spells")
 
--- warn receives hooks that could not be registered; the optional log, cast events.
-local tracker = Spells.tracker(print, print)
+-- warn receives hooks that could not be registered and fire poll errors.
+local tracker = Spells.tracker(print)
 tracker:listen({
 	fired = function(cast) end, -- cast.name: lowercased DatabaseName, e.g. "confringo"
 	impact = function(cast) end, -- its projectile hit something; at most once
@@ -119,3 +119,47 @@ local unsubscribe = Wand.subscribe({
 Wand.isRaised()
 Wand.state() -- nil until the first change after the hook is installed
 ```
+
+### Broom
+
+Summoning the broom spawns two `FlyingBroom` actors: a prop that scales in
+and out, and the `BP_FlyingBroomCapsule_<Broom>_C` pawn the player rides. The
+controller keeps possessing the player.
+
+| Moment | Signal |
+| --- | --- |
+| Mounted | `FlyingBroom:SetupPlayerOnBroom(BipedPlayer)` on the ridden broom |
+| Dismounted | `FlyingBroom:DetachPlayerFromBroomOnDismount(BipedPlayer, BroomProp, …)`; `Biped_Player:GetIsOnAMountOrInTransition()` stays true about 2 s longer |
+
+Speeding up, boosting and the boost meter run no hookable function; read them
+from the ridden broom:
+
+| Getter | Meaning |
+| --- | --- |
+| `IsInHoverMode()` | false while the player speeds up or boosts |
+| `IsInBoost()` | boosting; stays true a few seconds after letting go |
+| `GetBoostMeterAmount()` / `GetMaxBoostMeter()` | drains while boost is held; refills about 12 s after running out |
+| `IsBoostRecharging()` | true after letting go of boost, until the next boost; false while refilling after running out |
+
+`hogwarts.mounts` (`shared/src/hogwarts/mounts.lua`) reports the mount the
+player rides. Create the tracker when the mod loads so its hooks register;
+a broom ridden at that moment is seen from the next mount. The tracker polls
+by itself every 100 ms while the player function returns a player: on a broom
+it only checks the broom still exists; otherwise it looks for a ridden
+creature, which has no hooks yet.
+
+```lua
+local Mounts = require("hogwarts.mounts")
+
+-- warn receives hooks that could not be registered and poll errors; the
+-- function returns the player and controller in gameplay, or nil to skip a poll.
+local tracker = Mounts.tracker(print, function() return pawn, controller end)
+tracker:listen({
+	mounted = function(mount) end, -- mount.kind: "broom", "graphorn", "hippogriff", …; mount.actor
+	riding = function(mount) end, -- every poll on the mount, e.g. to read the boost meter
+	dismounted = function(mount) end,
+})
+tracker:current()
+```
+
+Creature mounts are not verified in game.

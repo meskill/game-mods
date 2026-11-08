@@ -57,59 +57,20 @@ end
 
 ---Trigger effects of the mount the player rides.
 ---@class HogwartsMountEffects
----@field private empty boolean Broom nitro ran out and has not fully recharged.
----@field private boosting boolean
----@field private recharging boolean
----@field private state? string Last logged creature state.
----@field private log? fun(message: string)
+---@field private empty boolean Broom nitro ran out and has not recharged enough.
 local Effects = {}
 Effects.__index = Effects
 
 local Mounts = {}
 
----@param log? fun(message: string) Receives broom nitro and creature state transitions.
 ---@return HogwartsMountEffects
-function Mounts.effects(log)
-	return setmetatable({ empty = false, boosting = false, recharging = false, log = log }, Effects)
+function Mounts.effects()
+	return setmetatable({ empty = false }, Effects)
 end
 
 ---Forget per-mount state after the player dismounts.
 function Effects:reset()
-	self.empty, self.boosting, self.recharging = false, false, false
-	self.state = nil
-end
-
----@private
----@param broom AFlyingBroom
----@return HogwartsTriggerEffect right
----@return HogwartsTriggerEffect left
-function Effects:broom(broom)
-	local amount, max = broom:GetBoostMeterAmount(), broom:GetMaxBoostMeter()
-	local boosting, recharging = broom:IsInBoost(), broom:IsBoostRecharging()
-	if self.log and (boosting ~= self.boosting or recharging ~= self.recharging) then
-		self.log(
-			("broom boost=%s recharging=%s meter=%.2f/%.2f"):format(
-				tostring(boosting),
-				tostring(recharging),
-				amount,
-				max
-			)
-		)
-	end
-	self.boosting, self.recharging = boosting, recharging
-
-	if not self.empty and amount <= max * EMPTY_FRACTION then
-		self.empty = true
-		if self.log then
-			self.log(("nitro empty meter=%.2f/%.2f"):format(amount, max))
-		end
-	elseif self.empty and max > 0 and amount >= max * READY_FRACTION then
-		self.empty = false
-		if self.log then
-			self.log(("nitro recharged meter=%.2f/%.2f"):format(amount, max))
-		end
-	end
-	return BOOST, self.empty and NITRO_EMPTY or NITRO
+	self.empty = false
 end
 
 ---Effects while the player rides `mount`.
@@ -120,12 +81,23 @@ function Effects:update(mount)
 	if mount.kind == "broom" then
 		return self:broom(mount.actor --[[@as AFlyingBroom]])
 	end
-	local state = creatureState(mount.actor --[[@as ACreature_Character]])
-	if self.log and state ~= self.state then
-		self.log(("mount %s state %s"):format(mount.kind, state))
+	return CREATURE_EFFECTS[
+		creatureState(mount.actor --[[@as ACreature_Character]])
+	], nil
+end
+
+---@private
+---@param broom AFlyingBroom
+---@return HogwartsTriggerEffect right
+---@return HogwartsTriggerEffect left
+function Effects:broom(broom)
+	local amount, max = broom:GetBoostMeterAmount(), broom:GetMaxBoostMeter()
+	if not self.empty and amount <= max * EMPTY_FRACTION then
+		self.empty = true
+	elseif self.empty and max > 0 and amount >= max * READY_FRACTION then
+		self.empty = false
 	end
-	self.state = state
-	return CREATURE_EFFECTS[state], nil
+	return BOOST, self.empty and NITRO_EMPTY or NITRO
 end
 
 return Mounts
