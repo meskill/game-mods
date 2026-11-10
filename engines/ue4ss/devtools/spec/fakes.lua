@@ -26,21 +26,26 @@ function Fakes.param(value)
 	})
 end
 
----A TArray of `values`: ForEach passes 1-based indexes and params, and stops
----when the callback returns true.
-function Fakes.array(values)
-	return Fakes.wrapper("TArray", {
-		ForEach = function(_, callback)
-			for i, value in ipairs(values) do
-				if callback(i, Fakes.param(value)) then
-					return
-				end
-			end
+---A TArray of `values`, read by 1-based index as UE4SS allows; reading an
+---index in `broken` fails. ForEach fails, as it does in game.
+---@param values any[]
+---@param broken? table<integer, true>
+function Fakes.array(values, broken)
+	local array = Fakes.wrapper("TArray", {
+		ForEach = function()
+			error("ForEach is not to be called")
 		end,
 		GetArrayNum = function()
 			return #values
 		end,
 	})
+	getmetatable(array).__index = function(_, i)
+		if broken and broken[i] then
+			error("unreadable element " .. i)
+		end
+		return values[i]
+	end
+	return array
 end
 
 ---An object whose GetFullName() is "<class> <path>".

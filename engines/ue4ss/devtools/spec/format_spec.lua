@@ -30,6 +30,16 @@ describe("ue4ss.devtools.format", function()
 		assert.equals("[3]{...3 more}", Format.value(array, { itemsLimit = 0 }))
 	end)
 
+	it("stops reading array elements for good after the first failure", function()
+		package.loaded["ue4ss.devtools.format"] = nil
+		local Fresh = require("ue4ss.devtools.format")
+
+		local failed = Fresh.value(Fakes.array({ 1, 2, 3 }, { [2] = true }))
+		assert.matches("^%[3%]{<elements unreadable from now on: .*unreadable element 2>, %.%.%.2 more}$", failed)
+		assert.equals("[2]{...2 more}", Fresh.value(Fakes.array({ 1, 2 })))
+		package.loaded["ue4ss.devtools.format"] = nil
+	end)
+
 	it("logs strings as they are and lists of strings one per line", function()
 		assert.equals("text", Format.text("text"))
 		assert.equals("a\nb", Format.text({ "a", "b" }))

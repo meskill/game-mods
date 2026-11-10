@@ -4,39 +4,33 @@ Describe how different part of the game works and how to work with them inside t
 
 ## Functionality
 
-### Menus
+### Gameplay
 
-The pause menu and its pages (Gear, Inventory, Talents, Map, Settings, …) are
-all the Field Guide. Every opening and closing takes the same path:
+`hogwarts.gameplay` (`shared/src/hogwarts/gameplay.lua`) tells whether the
+player is in gameplay. These take them out of it:
 
-| Moment | Signal |
+| `Gameplay.Reason` | When |
 | --- | --- |
-| Opening | `UIManager:FieldGuideMenuStart`; a page opened directly is preceded by `UIManager:SetActiveMenu` with its `MenuToLoad` (`"Inventory"`, `"Settings"`, …) |
-| Paused | `GameplayStatics:IsGamePaused` turns true immediately |
-| Closing | `UIManager:ExitFieldGuideWithReason` with `ExitReason=1` (back to game) |
-| Resumed | `IsGamePaused`, `UIManager:InPauseMode` and `MapSubSystem:GetInPauseMenu` turn false together, with a delay after closing |
-
-`InPauseMode` and `GetInPauseMenu` turn true with a delay after opening, so
-`IsGamePaused` is the better opening signal.
-
-Spell tracking stops while `IsGamePaused` is true, which matches the Field
-Guide's opening and closing. The map opened by its own key, dialogue, vendors
-and loading screens are not verified yet.
-
-The shared `hogwarts.menus` module (`shared/src/hogwarts/menus.lua`) hooks
-the opening and closing calls:
+| `MENU` | the pause menu, the map or another menu page is open |
+| `LOADING` | a loading screen shows, e.g. after fast travel |
+| `CONJURATION` | the Room of Requirement conjuration menu is open |
+| `DIALOGUE` | the player is talking to someone, vendors included |
 
 ```lua
-local Menus = require("hogwarts.menus")
+local Gameplay = require("hogwarts.gameplay")
 
-local unsubscribe = Menus.subscribe({
-	opened = function() end, -- the game pauses immediately
-	closed = function() end, -- the game resumes with a delay
-})
-Menus.isOpen()
+Gameplay.start() -- once, when the mod loads
+Gameplay.isActive() -- true when nothing above is happening
+local unsubscribe = Gameplay.subscribe(function(active, reason)
+	-- active false: gameplay stopped, `reason` says why; stop gameplay work.
+	-- active true: gameplay is back; start it again.
+end)
 ```
 
-A menu already open when the mod loads is not seen until it is reopened.
+The listener is called once when gameplay stops and once when it is back,
+however many reasons overlap: a fast travel goes from `MENU` to `LOADING`
+without coming back in between. It runs on the game thread, inside the
+game's call. A reason that started before `start()` is not noticed.
 
 ### Spells
 

@@ -106,17 +106,36 @@ function Format.reference(object)
 	return ("%s'%s'"):format(class, path:match("([^%.:]+)$") or path)
 end
 
+-- Why array elements are no longer read, after the first failure: each one
+-- raises an error through UE4SS's C++ code, and many of them corrupted the
+-- game's heap. TArray:ForEach failed on every non-empty array of a hook's
+-- parameters in UE4SS 3.0.1 ("attempt to call a nil value" inside ForEach),
+-- so elements are read by index instead.
+---@type string?
+local elementsUnreadable
+
+local function elementAt(value, i)
+	return value[i]
+end
+
 ---@param value TArray<any>
 ---@param context DevtoolsFormatContext
+---@return string
 local function array(value, context)
-	local parts = {}
-	if context.itemsLimit > 0 then
-		value:ForEach(function(_, element)
-			parts[#parts + 1] = context:nested(element)
-			return #parts >= context.itemsLimit
-		end)
-	end
 	local total = value:GetArrayNum()
+	local parts = {}
+	if elementsUnreadable then
+		return ("[%d]{%s}"):format(total, CoreFormat.list(parts, total))
+	end
+	for i = 1, math.min(total, context.itemsLimit) do
+		local ok, item = pcall(elementAt, value, i)
+		if not ok then
+			elementsUnreadable = tostring(item)
+			parts = { ("<elements unreadable from now on: %s>"):format(elementsUnreadable) }
+			break
+		end
+		parts[i] = context:nested(item)
+	end
 	return ("[%d]{%s}"):format(total, CoreFormat.list(parts, total))
 end
 
