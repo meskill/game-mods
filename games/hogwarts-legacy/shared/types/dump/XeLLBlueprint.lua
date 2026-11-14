@@ -9,6 +9,8 @@ function UXeLLBlueprintLibrary:SetXeLLMode(Mode) end
 function UXeLLBlueprintLibrary:SetFlashIndicatorEnabled(bEnabled) end
 ---@return boolean
 function UXeLLBlueprintLibrary:IsXeLLSupported() end
+---@return boolean
+function UXeLLBlueprintLibrary:IsXeLLAvailable() end
 ---@return EXeLLMode
 function UXeLLBlueprintLibrary:GetXeLLMode() end
 ---@return TArray<EXeLLMode>

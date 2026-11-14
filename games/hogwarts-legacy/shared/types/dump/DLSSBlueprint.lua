@@ -3,14 +3,15 @@
 ---@class UDLSSLibrary : UBlueprintFunctionLibrary
 local UDLSSLibrary = {}
 
----@param Sharpness float
-function UDLSSLibrary:SetDLSSSharpness(Sharpness) end
+---@param WorldContextObject UObject
 ---@param DLSSMode UDLSSMode
-function UDLSSLibrary:SetDLSSMode(DLSSMode) end
+function UDLSSLibrary:SetDLSSMode(WorldContextObject, DLSSMode) end
 ---@return UDLSSSupport
 function UDLSSLibrary:QueryDLSSSupport() end
 ---@return UDLSSSupport
 function UDLSSLibrary:QueryDLSSRRSupport() end
+---@return boolean
+function UDLSSLibrary:IsRayTracingAvailable() end
 ---@return boolean
 function UDLSSLibrary:IsDLSSSupported() end
 ---@return boolean
@@ -26,8 +27,6 @@ function UDLSSLibrary:IsDLSSEnabled() end
 function UDLSSLibrary:IsDLAAEnabled() end
 ---@return TArray<UDLSSMode>
 function UDLSSLibrary:GetSupportedDLSSModes() end
----@return float
-function UDLSSLibrary:GetDLSSSharpness() end
 ---@param MinScreenPercentage float
 ---@param MaxScreenPercentage float
 function UDLSSLibrary:GetDLSSScreenPercentageRange(MinScreenPercentage, MaxScreenPercentage) end

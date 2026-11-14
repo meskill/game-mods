@@ -18138,6 +18138,15 @@ local FNavSlideInfo = {}
 
 
 
+---@class FNeuralRenderingModeInfo
+---@field Mode ENeuralRenderingMode
+---@field ToneIntensityPercentage int32
+---@field DetailIntensityPercentage int32
+---@field CharacterIntensityPercentage int32
+local FNeuralRenderingModeInfo = {}
+
+
+
 ---@class FNewItem
 local FNewItem = {}
 
@@ -49033,6 +49042,7 @@ function UPhoenixGameInstance:AutoSaveGameData(Type) end
 ---@field LatencyMode ELowLatencyMode
 ---@field FrameGeneration FFrameGenerationModeInfo
 ---@field NvidiaRayReconstruction boolean
+---@field NeuralRendering FNeuralRenderingModeInfo
 ---@field Brightness float
 ---@field MinToneMapLuminance float
 ---@field MidToneMapLuminance float
@@ -49154,6 +49164,8 @@ function UPhoenixGameSettings:SetPerformanceMode(InPerformanceMode) end
 function UPhoenixGameSettings:SetPauseOnFocusLoss(bEnable) end
 ---@param bEnabled boolean
 function UPhoenixGameSettings:SetNvidiaRayReconstruction(bEnabled) end
+---@param NeuralRenderingMode FNeuralRenderingModeInfo
+function UPhoenixGameSettings:SetNeuralRendering(NeuralRenderingMode) end
 ---@param NewVal float
 function UPhoenixGameSettings:SetMusicSoundVolume(NewVal) end
 ---@param NewVal boolean
@@ -49266,6 +49278,8 @@ function UPhoenixGameSettings:IsPerformanceModeSwitchingAvailable() end
 ---@return boolean
 function UPhoenixGameSettings:IsNvidiaRayReconstructionSupported() end
 ---@return boolean
+function UPhoenixGameSettings:IsNeuralRenderingSupportedWithCurrentUpscaler() end
+---@return boolean
 function UPhoenixGameSettings:IsLowLatencySupported() end
 ---@param InMode ELowLatencyMode
 ---@return boolean
@@ -49282,6 +49296,8 @@ function UPhoenixGameSettings:IsFSR3Enabled() end
 function UPhoenixGameSettings:IsFrameGenerationSupportedWithCurrentUpscaler() end
 ---@return boolean
 function UPhoenixGameSettings:IsFidelityFXCasEnabled() end
+---@return boolean
+function UPhoenixGameSettings:IsDLSSNRSupported() end
 ---@return boolean
 function UPhoenixGameSettings:IsDLSSGSupported() end
 ---@return boolean
@@ -49371,6 +49387,8 @@ function UPhoenixGameSettings:GetPauseOnFocusLoss() end
 ---@param bDoCheck boolean
 ---@return boolean
 function UPhoenixGameSettings:GetNvidiaRayReconstruction(bDoCheck) end
+---@return FNeuralRenderingModeInfo
+function UPhoenixGameSettings:GetNeuralRendering() end
 ---@param OverrideMonitorIdx int32
 ---@return FIntPoint
 function UPhoenixGameSettings:GetNativeResolutionOfCurrentMonitor(OverrideMonitorIdx) end
@@ -60349,6 +60367,8 @@ function UVideoSettingsBlueprintFunctionLibrary:GetUpscaleModePercentage(Upscale
 ---@param InMode EUpscaleMode
 ---@return EUpscaleBrand
 function UVideoSettingsBlueprintFunctionLibrary:GetUpscaleBrandForMode(InMode) end
+---@return FNeuralRenderingModeInfo
+function UVideoSettingsBlueprintFunctionLibrary:GetNeuralRenderingOffInfo() end
 ---@return FIntPoint
 function UVideoSettingsBlueprintFunctionLibrary:GetMinResolution() end
 ---@return FIntPoint
@@ -60365,6 +60385,13 @@ function UVideoSettingsBlueprintFunctionLibrary:GetFrameGenerationOffInfo() end
 ---@param OutSharpness float
 ---@return boolean
 function UVideoSettingsBlueprintFunctionLibrary:GetDefaultUpscaleSharpnessIfChanged(InOldMode, InNewMode, OutSharpness) end
+---@param UpscaleMode EUpscaleMode
+---@return FNeuralRenderingModeInfo
+function UVideoSettingsBlueprintFunctionLibrary:GetDefaultNeuralRenderingInfoForUpscaler(UpscaleMode) end
+---@param NeuralRenderingInfo FNeuralRenderingModeInfo
+---@param UpscaleBrand EUpscaleMode
+---@return FNeuralRenderingModeInfo
+function UVideoSettingsBlueprintFunctionLibrary:GetClosestMatchingNeuralRenderingOptionForUpscaler(NeuralRenderingInfo, UpscaleBrand) end
 ---@param FrameGenerationOption FFrameGenerationModeInfo
 ---@param UpscaleMode EUpscaleMode
 ---@return FFrameGenerationModeInfo
@@ -60383,6 +60410,9 @@ function UVideoSettingsBlueprintFunctionLibrary:GetAvailableResolutions() end
 function UVideoSettingsBlueprintFunctionLibrary:GetAvailableRenderingResolutions(MonitorNativeResolution) end
 ---@return TArray<float>
 function UVideoSettingsBlueprintFunctionLibrary:GetAvailableRatios() end
+---@param UpscaleBrand EUpscaleBrand
+---@return TArray<ENeuralRenderingMode>
+function UVideoSettingsBlueprintFunctionLibrary:GetAvailableNeuralRenderingOptions(UpscaleBrand) end
 ---@return TArray<FSimpleMonitorInformation>
 function UVideoSettingsBlueprintFunctionLibrary:GetAvailableMonitors() end
 ---@param UpscaleMode EUpscaleMode
@@ -60402,6 +60432,9 @@ function UVideoSettingsBlueprintFunctionLibrary:GetAvailableFrameGenerationOptio
 function UVideoSettingsBlueprintFunctionLibrary:GetAvailableFrameGenerationOptions(UpscaleBrand) end
 ---@return TArray<EAntiAliasingMode>
 function UVideoSettingsBlueprintFunctionLibrary:GetAvailableAntiAliasingModes() end
+---@param UpscaleBrand EUpscaleBrand
+---@return boolean
+function UVideoSettingsBlueprintFunctionLibrary:DoesVideoCardSupportNeuralRendering(UpscaleBrand) end
 ---@param InMode EUpscaleMode
 ---@param InBrand EUpscaleBrand
 ---@return EUpscaleMode

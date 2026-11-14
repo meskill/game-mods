@@ -6840,6 +6840,13 @@ local ENavAreaFlag = {
     ENavAreaFlag_MAX = 4,
 }
 
+---@enum ENeuralRenderingMode
+local ENeuralRenderingMode = {
+    Off = 0,
+    Nvidia_On = 1,
+    ENeuralRenderingMode_MAX = 2,
+}
+
 ---@enum ENiagraPropertyTarget
 local ENiagraPropertyTarget = {
     Target = 0,

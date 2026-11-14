@@ -1,19 +1,24 @@
 ---@meta
 
 ---@class UStreamlineOverrideSettings : UObject
----@field EnableDLSSFGInPlayInEditorViewportsOverride EStreamlineSettingOverride
 ---@field LoadDebugOverlayOverride EStreamlineSettingOverride
+---@field AllowOTAUpdateOverride EStreamlineSettingOverride
+---@field EnableDLSSFGInPlayInEditorViewportsOverride EStreamlineSettingOverride
+---@field UseSlSetTagOverride EStreamlineSettingOverride
+---@field UseSlateCallbacksForSwapchainTrackingOverride EStreamlineSettingOverride
 local UStreamlineOverrideSettings = {}
 
 
 
 ---@class UStreamlineSettings : UObject
----@field bEnableStreamlineD3D12 boolean
----@field bEnableStreamlineD3D11 boolean
----@field bEnableDLSSFGInPlayInEditorViewports boolean
 ---@field bLoadDebugOverlay boolean
 ---@field bAllowOTAUpdate boolean
 ---@field NVIDIANGXApplicationId int32
+---@field bEnableStreamlineD3D12 boolean
+---@field bEnableStreamlineD3D11 boolean
+---@field bEnableDLSSFGInPlayInEditorViewports boolean
+---@field bUseSlSetTag boolean
+---@field bUseSlateCallbacksForSwapchainTracking boolean
 local UStreamlineSettings = {}
 
 
