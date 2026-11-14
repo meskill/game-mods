@@ -13,15 +13,16 @@ During active gameplay R2 follows the wand:
 
 1. **Idle, or R2 clicked** (the basic wand attack): DSX `GameCube` (legacy mode
    1, no arguments).
-2. **R2 held** for at least 0.3 s (casting spells): light vibration,
-   `VIBRATION` start 3, amplitude 1, 20 Hz.
+2. **R2 held** for at least 0.3 s (casting spells; `HOLD_DELAY`, timed at
+   100 ms polls, so 0.3 to 0.4 s): light vibration, `VIBRATION` start 3,
+   amplitude 1, 20 Hz.
 3. **Spell fires:** the spell's fire effect below replaces both, from the
    sample it fires until the first later sample without its projectile.
 4. **After the fire effect:** `VerySoft` for 100 ms, then the hold vibration if
    R2 is still held.
 
-The hold is read from the player controller:
-`APlayerController:GetInputKeyTimeDown` for the `Gamepad_RightTrigger` key.
+The hold is read from the player controller with the shared `hogwarts.input`:
+`APlayerController:IsInputKeyDown` for the `Gamepad_RightTrigger` key.
 Whether the game reports DualSense R2 under that key is not yet verified in
 game.
 

@@ -17,8 +17,9 @@ game every 100 ms on the game thread:
    only. Broom hooks report mounting and dismounting; the boost meter is read
    only while riding.
 3. **Otherwise R2 follows the trigger.** It uses the baseline effect and
-   switches to a light vibration while the poll finds R2 held
-   (`IsInputKeyDown(Gamepad_RightTrigger)`); spell hooks report casts.
+   switches to a light vibration once a key tracker (`hogwarts.input`) finds
+   R2 (`Gamepad_RightTrigger`) held for 0.3 s (`HOLD_DELAY`); a click, the
+   basic attack, keeps the baseline. Spell hooks report casts.
 
 Spell casts come from hooks on `SpellTool` (`hogwarts.spells`), not from
 sampling: R2 switches to the spell's fire effect (`spells.lua`) inside the

@@ -10,6 +10,7 @@ local Clock = require("ue4ss.clock")
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
 local Player = require("hogwarts.player")
+local Input = require("hogwarts.input")
 local Spells = require("spells")
 local Mounts = require("mounts")
 
@@ -25,8 +26,9 @@ local log = Log.new("[HogwartsDualSense]")
 local spells = SpellCasts.tracker(log)
 
 -- Wand effects during gameplay; a spell fire effect from spells.lua overrides both.
--- The baseline holds while R2 is released; holding R2 (which raises the wand for
--- a cast) switches to the light hold vibration. Each poll reads R2.
+-- The baseline holds while R2 is released or only clicked (the basic attack);
+-- holding R2 for HOLD_DELAY (which raises the wand for a cast) switches to the
+-- light hold vibration. Each poll reads R2.
 ---@type HogwartsTriggerEffect
 local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.GameCube, args = {} }
 ---@type HogwartsTriggerEffect
@@ -34,6 +36,9 @@ local HOLD_EFFECT = { mode = AdaptiveTrigger.Mode.VIBRATION, args = { 3, 1, 20 }
 -- Seconds after a spell effect ends before a still-raised wand vibrates again;
 -- the baseline fills the gap.
 local SPELL_END_DELAY = 0.1
+-- Seconds R2 must be held before the hold vibration starts; a shorter press is
+-- the basic attack. Polls are 100 ms apart, so it starts 0.3 to 0.4 s in.
+local HOLD_DELAY = 0.3
 ---@type HogwartsTriggerEffect
 local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 
@@ -90,12 +95,11 @@ ExecuteAsync(function()
 	local stopped = false
 	-- The last poll found the player on foot in gameplay, so R2 follows the wand.
 	local onFoot = false
-	-- The last poll found R2 pressed.
-	local r2Held = false
-	local spellEndedAt = -math.huge
 	-- The digital R2 key, pressed past the game's trigger threshold.
-	---@type FKey
-	local r2Key = { KeyName = FName("Gamepad_RightTrigger") }
+	local R2_KEY = "Gamepad_RightTrigger"
+	-- R2 across polls, for how long it is held.
+	local keys = Input.tracker({ R2_KEY })
+	local spellEndedAt = -math.huge
 
 	-- Sends an effect only when it differs from what the trigger already has; DSX
 	-- keeps the last effect, so repeating it is wasted traffic. Packets are cached per
@@ -146,7 +150,8 @@ ExecuteAsync(function()
 		if spellEffect then
 			return spellEffect
 		end
-		return r2Held and now >= spellEndedAt + SPELL_END_DELAY and HOLD_EFFECT or BASE_EFFECT
+		local holding = keys:heldFor(R2_KEY) >= HOLD_DELAY
+		return holding and now >= spellEndedAt + SPELL_END_DELAY and HOLD_EFFECT or BASE_EFFECT
 	end
 
 	---@param apply boolean False when a new fire effect follows at once.
@@ -214,7 +219,7 @@ ExecuteAsync(function()
 		local player = activePlayer()
 		if not player then
 			onFoot = false
-			r2Held = false
+			keys:reset()
 			spells:pause()
 			applyEffect(RIGHT_TRIGGER, OFF_EFFECT)
 			if appliedEffects[LEFT_TRIGGER] then
@@ -225,12 +230,13 @@ ExecuteAsync(function()
 		-- 2. On a mount the wand and spells pause.
 		if mounts:current() then
 			onFoot = false
+			keys:reset()
 			spells:pause()
 			return
 		end
 		-- 3. On foot: L2 is unused, R2 follows the trigger; spell hooks report casts.
 		onFoot = true
-		r2Held = player.controller:IsInputKeyDown(r2Key)
+		keys:update(player.controller)
 		spells:resume()
 		if spellEffect and Clock.now() >= spellEffectEndsAt then
 			endSpellEffect(false)

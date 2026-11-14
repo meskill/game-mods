@@ -144,7 +144,138 @@ and the light actor exists. Spell set previews also switch to the Lumos tool
 QuickUtils (a Blueprint quick-cast mod) casts Lumos with
 `WandTool:ActivateSpellTool(DA_LumosSpellRecord, false)` and
 `WandTool:CastActiveSpell`, and presses no spell button: `OnSpell_Pressed`
-does not run for it.
+does not run for it. The `quick-cast` mod casts the same way.
+
+#### Quick casts
+
+A spell can be cast without a spell button or a spell set slot, as
+QuickUtils does. Its package names the spell record assets it casts:
+`/Game/Gameplay/ToolSet/Spells/<Name>/DA_<Name>SpellRecord.DA_<Name>SpellRecord`
+for `Lumos`, `Disillusionment`, `Reparo` and `Wingardium`. It checks
+`WandTool:IsSpellToolAvailable(record, …)` ("Spell not available yet"), then
+calls `ActivateSpellTool(record, false)` and `CastActiveSpell()`.
+
+`hogwarts.cast` (`shared/src/hogwarts/cast.lua`) does that by the record's
+spell name, finding the record or loading it:
+
+```lua
+local Cast = require("hogwarts.cast")
+
+-- On the game thread, the player in gameplay (on foot or on a mount):
+local result = Cast.spell(player.pawn, "Lumos")
+-- "cast", "unknown" (no record), "unavailable" (not learned), "failed"
+```
+
+Not verified in game: only QuickUtils' calls are known, not their results.
+
+### Room of Requirement
+
+The game's `TransfigurationManager` (one transient object) says where the
+player can conjure: `GetConjurationContext()` returns an
+`EConjurationContext`, `Sanctuary` for the Room of Requirement and `Biome_*`
+for its vivariums. The room's spells have records like other spells (UE4SS
+object dump): `Conjuration` (create), `Transformation` (alter; outside the
+room `TransformationOverland`) and `Vanishment` (Evanesco), under
+`/Game/Gameplay/ToolSet/Spells/<Name>/DA_<Name>SpellRecord`.
+
+`quick-cast` reads it in `quick-cast/src/Scripts/conjuration.lua`
+(`Conjuration.inRoom()`: any context but `None`) and casts the room's spells
+with `hogwarts.cast`. Verified in game: Conjuration and Evanesco work cast
+this way.
+
+Altering does not. Its cast opens the selection only with an object in focus
+(the controller's `GetBestAutoTargetActor()`), and room objects are outlined
+and focusable only while the chosen spell set holds a room spell, R2 held or
+not. Cast without one, it fires `Start` and stops 0.25 s later. Choosing a
+set runs no hookable function, `USpellManagerBPInterface`'s loadout index is
+not the game's chosen set, and `MastermindBPLibrary:SimulateTappedInput` of
+the set keys changes nothing. Spell sets are the input actions
+`AM_Loadout1`-`4`: keyboard F1-F4 and 5-8, gamepad D-pad up, right, down,
+left.
+
+A set's spells can be written from Lua:
+`QuickActionManager:SlotSpellFromCode("Transformation", 0, group)` (one
+transient object; `group` = `GetActiveGroupIndex()`, the chosen set) puts
+Altering into the first spell of that set at once; a write takes under 1 ms.
+Spell slots 0-3 are the diamond's top, right, bottom and left. Room objects
+are outlined within 10 ms and Altering works; writing the old spell back
+removes them. `Biped_Character:SetSpell` and
+`SpellManagerBPInterface:SetSpell` change no set (devtools
+`experiments/room.lua`, runs 1-12).
+
+The creature tools (Nab-Sack, brush, food) sit in spell sets as inventory
+items (entry type 1, count -1), not spells: `SlotSpellFromCode` with their
+name empties the slot. `SlotInventoryItemFromCode("CaptureDevice", -1, slot)`
+writes one into the chosen set as the spell menu does, bar and button
+included; `UpdateSelectedActionItem` changes only the data. A set's entries
+read with `GetItemType(set, slot, 0)` and `GetItemName(set, slot, 0, out)`
+(`out.ItemName`) (devtools `experiments/beasts.lua`, runs 5-9).
+`quick-cast` writes its buttons' actions this way while RB is held
+(`quick-cast/src/Scripts/loadout.lua`).
+
+`WandTool:IsSpellToolAvailable` switches the wand's active spell tool on
+every call: polling it breaks the game's casts.
+
+### Gamepad input
+
+`APlayerController:IsInputKeyDown({ KeyName = FName("Gamepad_DPad_Up") })`
+reads a key: UE4SS takes the `FKey` struct as a table of its fields. Key
+states do not depend on the game's bindings.
+
+A Lua mod cannot consume a press: the game acts on it too. The game binds its
+gamepad actions as action mappings in the engine's input settings
+(`Default__InputSettings.ActionMappings`; Phoenix adds `GroupName` and
+`SortIndex` to `FInputActionKeyMapping`, and its `UIManager` rebinds controls
+through them). QuickUtils consumes, while RB is held, the D-pad keys and the
+game's actions `CM_GamePad_Dpad{Up,Down,Left,Right}`, `AM_Loadout1`–`4`,
+`AM_Navigation`, `UMGDPad{Up,Down,Left,Right}` and `UMGActionScreenToggle`.
+
+`hogwarts.input` (`shared/src/hogwarts/input.lua`) reads keys, follows them
+between polls, and takes the action mappings off keys for a while:
+
+```lua
+local Input = require("hogwarts.input")
+
+Input.isDown(controller, "Gamepad_RightShoulder") -- one read, now
+
+local keys = Input.tracker({ "Gamepad_RightShoulder", "Gamepad_DPad_Up" })
+keys:update(controller) -- once per poll, on the game thread: reads every key
+keys:isDown("Gamepad_RightShoulder")
+keys:pressed("Gamepad_DPad_Up") -- went down at this update; also released()
+keys:heldFor("Gamepad_RightShoulder") >= 0.5 -- seconds held, 0 while up
+keys:reset() -- leaving gameplay: the next update reports no press or release
+
+local blocker = Input.blocker({ "Gamepad_DPad_Up", "Gamepad_DPad_Down" })
+blocker:block() -- removes the mappings on those keys, rebuilds the key maps
+blocker:restore() -- puts them back
+blocker:reset() -- restores; the next block reads the mappings again
+
+-- the same for actions, on whatever keys they are mapped to
+local panel = Input.actionBlocker({ "UMGCreatureManagementScreen" })
+
+-- a key event the game takes as the player's: its mappings act on it
+Input.simulate(controller, "Gamepad_RightShoulder", Input.Event.PRESSED)
+Input.simulate(controller, "Gamepad_RightShoulder", Input.Event.RELEASED)
+```
+
+The tracker sees only what its polls see: a key goes down at the first
+update that finds it down, a hold is timed from there, and a tap shorter than
+the poll interval can be missed. Asking about a key it does not track is an
+error. A key already held at the first update after creation or `reset()`
+reports no press, so a press made in a menu does not act in gameplay.
+
+Restore the blocker before the player can reach the controls menu, so a
+rebind never saves the settings without them. Not verified in game.
+
+RB opens the beasts panel in the room's vivariums, at the press: the action
+mapping `UMGCreatureManagementScreen` (also on a keyboard key), which runs
+the state tree's `InpActEvt_CreatureManagementButton` event. Removing the
+mapping keeps the panel shut. Calling that event, or
+`UMGInputManager:OnInputAction(44, …)`, from Lua opens nothing; with the
+mapping back, `MastermindBPLibrary:SimulateInput` of RB (pressed, then
+released) opens it, and the simulated press does not show in
+`IsInputKeyDown` (devtools `experiments/vivarium.lua`, runs 1-3).
+`MastermindBPLibrary:SimulateTappedInput` of the spell set keys did nothing.
 
 ### Wand
 
@@ -191,9 +322,9 @@ Wand.isRaised() -- the wand is raised for a cast, also under Lumos
 Wand.state() -- nil until the first change after the hook is installed
 ```
 
-To tell whether R2 itself is held, poll the input instead:
-`controller:IsInputKeyDown({ KeyName = FName("Gamepad_RightTrigger") })` on the
-game thread.
+To tell whether R2 itself is held, poll the input instead, on the game thread:
+`Input.isDown(controller, "Gamepad_RightTrigger")` (`hogwarts.input`, see
+[Gamepad input](#gamepad-input)).
 
 ### Broom
 

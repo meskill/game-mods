@@ -53,9 +53,43 @@ function AWandTool:OnActiveSpellToolChanged(ActivatedSpell, DeactivatedSpell) en
 ---@return boolean
 function AWandTool:CastSpell(InSpellTool, bImmediate) end
 
----Never called while the player cast spells.
+---Casts the wand's active spell tool without a spell button: no
+---`OnSpell_Pressed`. The game's own casts never call it. Quick casts
+---(QuickUtils, `hogwarts.cast`) call it right after `ActivateSpellTool`;
+---QuickUtils logs "Cast failed" when it returns false. Casting Lumos this way
+---at a lit Lumos puts it out, as the spell button does.
 ---@return boolean
 function AWandTool:CastActiveSpell() end
+
+---Makes the spell tool of `SpellToolRecord` the active one, so
+---`CastActiveSpell()` casts it; the spell needs no spell set slot. Runs
+---`OnActiveSpellToolChanged`. Returns the activated tool. Quick casts pass
+---`bImmediate` false; what true changes is unknown.
+---@param SpellToolRecord USpellToolRecord
+---@param bImmediate boolean
+---@return ASpellTool
+function AWandTool:ActivateSpellTool(SpellToolRecord, bImmediate) end
+
+---Whether the player can cast the record's spell now, e.g. false for a spell
+---not learned. Not a getter: each call switches the wand to the record's
+---spell tool (`OnActiveSpellToolChanged`), also mid-cast, which breaks the
+---cast in progress; never poll it. With `bImmediate` false it is false while
+---another spell is being cast (`IsStopped()` false); true stayed true.
+---Quick casts check it right before `ActivateSpellTool`, which switches anyway.
+---@param SpellToolRecord USpellToolRecord
+---@param bImmediate boolean
+---@return boolean
+function AWandTool:IsSpellToolAvailable(SpellToolRecord, bImmediate) end
+
+---A spell's data asset, one per spell:
+---`/Game/Gameplay/ToolSet/Spells/<Name>/DA_<Name>SpellRecord.DA_<Name>SpellRecord`.
+---Seen in QuickUtils: `Lumos`, `Disillusionment`, `Reparo`, `Wingardium`. In
+---the UE4SS object dump, the Room of Requirement's: `Conjuration` (create),
+---`Transformation` (alter) and `Vanishment` (Evanesco); altering outside the
+---room is `Transformation/DA_TransformationOverlandSpellRecord`. Loaded with
+---`StaticFindObject`, or `LoadAsset` when not loaded yet.
+---@class USpellToolRecord
+local USpellToolRecord = {}
 
 ---Never called while the player cast spells.
 function AWandTool:OnSpellCasted() end
@@ -63,6 +97,65 @@ function AWandTool:OnSpellCasted() end
 ---Never called while the player cast spells.
 ---@param InSpellTool ASpellTool
 function AWandTool:EndSpellCast(InSpellTool) end
+
+---The spell sets' owner: one transient `QuickActionManager` (`FindFirstOf`).
+---`GetActiveGroupIndex()` is the chosen set (0-3: D-pad up, right, down,
+---left), updated on each switch; there are 5 groups, the fifth all empty.
+---Each set has 4 slots (macros 0-3: the diamond's top, right, bottom, left)
+---of one item each. Spells are type 0 (count 0); the creature tools, which
+---the player slots into sets like spells, are inventory items, type 1
+---(the spell menu gives them count -1); an empty slot is type 2 "None".
+---Items have no wand spell: the wand's slot reads none.
+---@class UQuickActionManager
+local UQuickActionManager = {}
+
+---Puts `SpellID` (the record's name, e.g. `"Transformation"`) into spell
+---`Slot` (0-3: the diamond's top, right, bottom, left) of set `Group` (0-3),
+---in under 1 ms: slot n is the wand's slot 3 + n (`GetSpellRecordFromSlot`;
+---wand slots 0 and 2 change with slot 0). For the chosen set the bar and the
+---game's checks follow immediately: Altering written this way outlined room
+---objects within 10 ms and worked. Called from Lua, no other hookable call
+---followed and no save.
+---`Biped_Character:SetSpell` and `SpellManagerBPInterface:SetSpell` (any
+---index) change no set.
+---@param SpellID FString
+---@param Slot int32
+---@param Group int32
+function UQuickActionManager:SlotSpellFromCode(SpellID, Slot, Group) end
+
+---Puts inventory item `ItemId` (e.g. `"CaptureDevice"`, the Nab-Sack) into
+---slot `Slot` (0-3) of the chosen set, as the spell menu does with an
+---`Amount` of -1: the bar shows it, and its button uses it
+---(`Biped_Player:QuickActionInteract(Slot)`, then the item tool).
+---@param ItemId FString
+---@param Amount int32
+---@param Slot int32
+function UQuickActionManager:SlotInventoryItemFromCode(ItemId, Amount, Slot) end
+
+---Put the Nab-Sack into the chosen set's slot with count 1; afterwards a
+---second set (group 2) held it at the same slot too: may write more than one set.
+---@param ItemId FString
+---@param Slot int32
+function UQuickActionManager:SlotToolFromCode(ItemId, Slot) end
+
+---Changes a set entry's data only: the bar and the button keep the old entry,
+---also after re-choosing the set.
+---@param ItemName FString
+---@param ItemVariation FString
+---@param ItemType EUIQActionBarType
+---@param ItemHolder FString
+---@param RequestedGroupIndex int32
+---@param Amount int32
+---@param RequestedMacroIndex int32
+---@param Index int32
+function UQuickActionManager:UpdateSelectedActionItem(ItemName, ItemVariation, ItemType, ItemHolder, RequestedGroupIndex, Amount, RequestedMacroIndex, Index) end
+
+---Fills `ItemName` of the table passed with the entry's name (an FName).
+---@param GroupIndex int32
+---@param MacroIndex int32
+---@param ActionIndex int32
+---@param ItemName FName
+function UQuickActionManager:GetItemName(GroupIndex, MacroIndex, ActionIndex, ItemName) end
 
 ---One spell of the wand: an actor in the world (`ASpellTool : ATool : AActor`),
 ---e.g. `BP_ConfringoSpell_C`. `GetWand()` returns its wand.
