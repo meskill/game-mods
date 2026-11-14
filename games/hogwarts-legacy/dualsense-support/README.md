@@ -10,7 +10,8 @@ that companion alongside DSX.
 On load, `main.lua` asks DSX which controller to use. After that it samples the
 game every 100 ms on the game thread:
 
-1. **Not in gameplay** (paused, cinematic, dead, no player): both triggers off.
+1. **Not in gameplay** (`hogwarts.player`: paused, cinematic, dead, no
+   player): both triggers off.
 2. **Mounted** (`hogwarts.mounts`): spells pause and the triggers follow the
    mount (`mounts.lua`). A broom drives R2 and L2; a creature mount drives R2
    only. Broom hooks report mounting and dismounting; the boost meter is read

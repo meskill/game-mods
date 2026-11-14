@@ -2,10 +2,6 @@
 -- Deploy the backends_dsx Lua modules and transitive dependencies on UE4SS's module paths.
 -- DSX effects persist: return to a paused state before disabling/reloading this mod.
 
--- Object lookups use the shared ue4ss package rather than the installation's
--- UEHelpers, because UEHelpers behaves differently across UE4SS versions.
-local Objects = require("ue4ss.objects")
-local Lookup = require("ue4ss.lookup")
 local Loop = require("ue4ss.loop")
 local Log = require("ue4ss.log")
 local Server = require("server")
@@ -14,6 +10,7 @@ local getTime = require("net.socket").gettime
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
 local Wand = require("hogwarts.wand")
+local Player = require("hogwarts.player")
 local Spells = require("spells")
 local Mounts = require("mounts")
 
@@ -58,41 +55,21 @@ local SPELL_END_DELAY = 0.1
 ---@type HogwartsTriggerEffect
 local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 
--- Finding the controller scans every PlayerController. Reuse a live one; while
--- menus or travel have none, search at most once per second.
-local controllers = Lookup.new(1, Objects.playerController)
-
----The player pawn and its controller while gameplay is active: not paused,
----no cinematic, player alive. Uses the dumped Phoenix player type, not menu
----or spectator pawns.
----@return ABiped_Player? pawn
----@return APlayerController? controller
-local function activePawn()
-	local controller = controllers:get(getTime()) --[[@as APlayerController?]]
-	if not controller then
-		return nil
-	end
-
-	local pawn = controller.Pawn
-	-- On a creature the controller may possess the mount; its rider is the player.
-	if pawn and pawn:IsValid() then
-		pawn = MountTracking.rider(pawn) or pawn
-	end
-	if not pawn or not pawn:IsValid() or not pawn:IsA("/Script/Phoenix.Biped_Player") then
-		return nil
-	end
-	---@cast pawn ABiped_Player
-
-	local gameplay = Objects.gameplayStatics()
-	if not gameplay or gameplay:IsGamePaused(controller) or pawn.InCinematic or pawn:IsDead() then
-		return nil
-	end
-	return pawn, controller
+---The player while in gameplay (not paused, in a cinematic or dead), or nil.
+---@return HogwartsPlayer?
+local function activePlayer()
+	local player = Player.find(getTime())
+	return player and player.active and player or nil
 end
 
 -- The broom hooks register and the mount poll starts at load, outside
 -- ExecuteAsync; ExecuteAsync sets the listener once it can send effects.
-local mounts = MountTracking.tracker(log, activePawn)
+local mounts = MountTracking.tracker(log, function()
+	local player = activePlayer()
+	if player then
+		return player.pawn, player.controller
+	end
+end)
 
 -- Flow: find the DSX controller once, then every POLL_INTERVAL_MS on the game
 -- thread pick one effect per trigger (see update) and send it only when it changes.
@@ -253,9 +230,8 @@ ExecuteAsync(function()
 	--   2. riding a mount     -> the mount tracker's `riding` drives the triggers
 	--   3. otherwise R2       -> spell fire effect, else hold vibration, else baseline
 	local function update()
-		local pawn, controller = activePawn()
 		-- 1. Paused, cinematic, dead, or no player: end any cast and switch off.
-		if not pawn or not controller then
+		if not activePlayer() then
 			onFoot = false
 			spells:pause()
 			applyEffect(RIGHT_TRIGGER, OFF_EFFECT)

@@ -32,6 +32,34 @@ however many reasons overlap: a fast travel goes from `MENU` to `LOADING`
 without coming back in between. It runs on the game thread, inside the
 game's call. A reason that started before `start()` is not noticed.
 
+### Player
+
+`hogwarts.player` (`shared/src/hogwarts/player.lua`) finds the player
+character and reads its state:
+
+```lua
+local Player = require("hogwarts.player")
+
+local player = Player.find(os.clock()) -- nil: title screen, map open, loading
+if player and player.active and not player.mounted then
+	-- player.pawn, player.controller
+end
+```
+
+| Field | True while |
+| --- | --- |
+| `active` | none of the three below: the player is in gameplay |
+| `paused` | the game is paused: the pause menu, map or action wheel |
+| `cinematic` | a cinematic, a dialogue or a vendor |
+| `dead` | the player is dead |
+| `mounted` | the player rides a mount, or gets on or off one |
+
+On a creature mount `pawn` is still the player, its rider. Call it on the
+game thread; the clock paces the search for the player controller (once a
+second while there is none). The flags come from the game's own state, so a
+fast travel's loading screen counts as `active` once the game unpauses: use
+`hogwarts.gameplay` for that.
+
 ### Spells
 
 The wand (`WandTool`) holds one spell tool (`SpellTool`) per spell.

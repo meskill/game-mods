@@ -3,12 +3,17 @@
 ---The character the player controls (`ABiped_Player : ABiped_Character : ACharacter`).
 ---While riding, the player controller's `Pawn` may be the mount instead.
 ---@class ABiped_Player
----@field InCinematic boolean Whether the player is in a cinematic.
+---@field InCinematic boolean Whether the player is in a cinematic. Also true during a dialogue or a vendor visit: on 0.2 to 0.4 s after the conversation starts, off with its end. Stays false in menus, on the map and while loading; not checked in the conjuration menu.
 local ABiped_Player = {}
 
----Whether the player is on a mount, or getting on or off one.
+---Whether the player is on a mount, or getting on or off one; stays true
+---about 2 s after leaving a broom.
 ---@return boolean
 function ABiped_Player:GetIsOnAMountOrInTransition() end
+
+---@class APlayerController
+---@field Pawn APawn The player character, except: a `MapPawn` while the map is open, a `DefaultPawn` while a fast travel loads, the creature while riding one.
+local APlayerController = {}
 
 ---@class ABiped_Character
 local ABiped_Character = {}

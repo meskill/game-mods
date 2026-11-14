@@ -52,8 +52,9 @@ The mod forgets the light without calling the game when:
 call failed inside its `pcall`, so its wand always dropped.
 
 `main.lua` updates every 200 ms on the game thread while the player is on foot
-in gameplay (not paused, in a cinematic, dead or on a mount); the spell tracker
-reports casts only then, and a kept light is not forced in between.
+in gameplay (`hogwarts.player`: not paused, in a cinematic, dead or on a
+mount); the spell tracker reports casts only then, and a kept light is not
+forced in between.
 
 ```mermaid
 stateDiagram-v2
