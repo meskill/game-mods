@@ -82,7 +82,6 @@ describe("hogwarts.gameplay", function()
 		closeMenu(BACK_TO_GAME)
 		closeMenu(BACK_TO_GAME)
 
-
 		assert.is_true(Gameplay.isActive())
 		assert.same({ "stopped:menu", "resumed" }, events)
 	end)

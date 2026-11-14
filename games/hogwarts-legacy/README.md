@@ -191,6 +191,10 @@ Wand.isRaised() -- the wand is raised for a cast, also under Lumos
 Wand.state() -- nil until the first change after the hook is installed
 ```
 
+To tell whether R2 itself is held, poll the input instead:
+`controller:IsInputKeyDown({ KeyName = FName("Gamepad_RightTrigger") })` on the
+game thread.
+
 ### Broom
 
 Summoning the broom spawns two `FlyingBroom` actors: a prop that scales in

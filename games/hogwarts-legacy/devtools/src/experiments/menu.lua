@@ -308,7 +308,10 @@ local function follow(dev)
 				if not state or not state:IsValid() then
 					return "none"
 				end
-				return ("%s actor=%s"):format(describe(state.CurrentConversation), describe(state.OwnedConversationActor))
+				return ("%s actor=%s"):format(
+					describe(state.CurrentConversation),
+					describe(state.OwnedConversationActor)
+				)
 			end)
 		)
 		dev.track.value(

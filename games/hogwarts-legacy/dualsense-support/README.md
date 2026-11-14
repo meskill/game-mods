@@ -16,16 +16,15 @@ game every 100 ms on the game thread:
    mount (`mounts.lua`). A broom drives R2 and L2; a creature mount drives R2
    only. Broom hooks report mounting and dismounting; the boost meter is read
    only while riding.
-3. **Otherwise R2 follows the wand.** It uses the baseline effect and switches to
-   a light vibration while R2 holds the wand raised for a cast
-   (`hogwarts.wand`, also while Lumos holds the wand up), applied the moment it
-   changes; spell hooks report casts.
+3. **Otherwise R2 follows the trigger.** It uses the baseline effect and
+   switches to a light vibration while the poll finds R2 held
+   (`IsInputKeyDown(Gamepad_RightTrigger)`); spell hooks report casts.
 
 Spell casts come from hooks on `SpellTool` (`hogwarts.spells`), not from
 sampling: R2 switches to the spell's fire effect (`spells.lua`) inside the
-`Start` hook, and back when the cast ends. A cast without a projectile, such as
-Lumos, never ends until the next spell replaces it, so its effect has a
-`duration` (Lumos: a 0.3 s pulse) after which the next poll restores the wand's
+`Start` hook, and back when the cast ends. Utility spells (Lumos, Reparo,
+Wingardium, …) only pulse for 0.3 s (`duration`), however long the spell's
+menu, animation or toggle lasts; the next poll after that restores the wand's
 effect. Casts are reported only while the last sample found the player on foot.
 
 ## Build and debug

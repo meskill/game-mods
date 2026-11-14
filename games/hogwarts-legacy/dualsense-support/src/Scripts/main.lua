@@ -9,7 +9,6 @@ local AdaptiveTrigger = require("adaptive_triggers")
 local Clock = require("ue4ss.clock")
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
-local Wand = require("hogwarts.wand")
 local Player = require("hogwarts.player")
 local Spells = require("spells")
 local Mounts = require("mounts")
@@ -25,26 +24,9 @@ local log = Log.new("[HogwartsDualSense]")
 -- player on foot.
 local spells = SpellCasts.tracker(log)
 
--- The wand hooks also register at load; ExecuteAsync sets the handler once it
--- can send effects.
----@type fun()?
-local armChanged
-Wand.subscribe({
-	changed = function()
-		if armChanged then
-			armChanged()
-		end
-	end,
-	raised = function()
-		if armChanged then
-			armChanged()
-		end
-	end,
-})
-
 -- Wand effects during gameplay; a spell fire effect from spells.lua overrides both.
--- The baseline holds while the wand is down; raising it for a cast (holding R2,
--- also while Lumos holds the wand up) switches to the light hold vibration.
+-- The baseline holds while R2 is released; holding R2 (which raises the wand for
+-- a cast) switches to the light hold vibration. Each poll reads R2.
 ---@type HogwartsTriggerEffect
 local BASE_EFFECT = { mode = AdaptiveTrigger.Mode.GameCube, args = {} }
 ---@type HogwartsTriggerEffect
@@ -108,7 +90,12 @@ ExecuteAsync(function()
 	local stopped = false
 	-- The last poll found the player on foot in gameplay, so R2 follows the wand.
 	local onFoot = false
+	-- The last poll found R2 pressed.
+	local r2Held = false
 	local spellEndedAt = -math.huge
+	-- The digital R2 key, pressed past the game's trigger threshold.
+	---@type FKey
+	local r2Key = { KeyName = FName("Gamepad_RightTrigger") }
 
 	-- Sends an effect only when it differs from what the trigger already has; DSX
 	-- keeps the last effect, so repeating it is wasted traffic. Packets are cached per
@@ -150,8 +137,8 @@ ExecuteAsync(function()
 	-- When a fire effect with a duration ends; checked by each poll.
 	local spellEffectEndsAt = math.huge
 
-	-- R2 on foot: the fire effect, else the hold vibration while the wand is raised,
-	-- else the baseline. After a fire effect, the baseline lasts a moment before the
+	-- R2 on foot: the fire effect, else the hold vibration while R2 is held, else
+	-- the baseline. After a fire effect, the baseline lasts a moment before the
 	-- hold vibration resumes.
 	---@param now number
 	---@return HogwartsTriggerEffect
@@ -159,7 +146,7 @@ ExecuteAsync(function()
 		if spellEffect then
 			return spellEffect
 		end
-		return Wand.isRaised() and now >= spellEndedAt + SPELL_END_DELAY and HOLD_EFFECT or BASE_EFFECT
+		return r2Held and now >= spellEndedAt + SPELL_END_DELAY and HOLD_EFFECT or BASE_EFFECT
 	end
 
 	---@param apply boolean False when a new fire effect follows at once.
@@ -218,21 +205,16 @@ ExecuteAsync(function()
 		end,
 	})
 
-	-- Arm and raise changes apply at once instead of waiting for the next poll.
-	armChanged = function()
-		if onFoot then
-			applyEffect(RIGHT_TRIGGER, wandEffect(Clock.now()))
-		end
-	end
-
 	-- One poll. Priority, first match wins:
 	--   1. no active gameplay -> triggers off
 	--   2. riding a mount     -> the mount tracker's `riding` drives the triggers
 	--   3. otherwise R2       -> spell fire effect, else hold vibration, else baseline
 	local function update()
 		-- 1. Paused, cinematic, dead, or no player: end any cast and switch off.
-		if not activePlayer() then
+		local player = activePlayer()
+		if not player then
 			onFoot = false
+			r2Held = false
 			spells:pause()
 			applyEffect(RIGHT_TRIGGER, OFF_EFFECT)
 			if appliedEffects[LEFT_TRIGGER] then
@@ -246,8 +228,9 @@ ExecuteAsync(function()
 			spells:pause()
 			return
 		end
-		-- 3. On foot: L2 is unused, R2 follows the wand; spell hooks report casts.
+		-- 3. On foot: L2 is unused, R2 follows the trigger; spell hooks report casts.
 		onFoot = true
+		r2Held = player.controller:IsInputKeyDown(r2Key)
 		spells:resume()
 		if spellEffect and Clock.now() >= spellEffectEndsAt then
 			endSpellEffect(false)
