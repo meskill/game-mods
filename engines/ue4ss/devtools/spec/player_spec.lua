@@ -32,7 +32,7 @@ describe("ue4ss.devtools.player", function()
 			return { controller }
 		end
 		player = Player.new()
-		player:refresh(0)
+		player:refresh()
 	end)
 
 	after_each(function()

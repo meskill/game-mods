@@ -55,6 +55,8 @@
 -- null, and no TriggerEffectManager or TriggerEffect function ran.
 -- The player's AblAbilityComponent reported no active ability all flight.
 
+local Clock = require("ue4ss.clock")
+
 local BROOM_CLASS = "/Script/Phoenix.FlyingBroom"
 local CREATURE_CLASS = "/Script/Phoenix.Creature_Character"
 local ABILITY_COMPONENT_CLASS = "/Script/AbleCore.AblAbilityComponent"
@@ -218,7 +220,7 @@ end
 ---@field broom? AFlyingBroom
 ---@field creature? ACreature_Character
 ---@field player? UObject The rider.
----@field scanned number os.clock() of the last mount scan.
+---@field scanned number Clock.now() of the last mount scan.
 
 ---Finds the player and the mount they ride: the possessed pawn when it is a
 ---mount, otherwise the mount found by a scan, at most every SCAN_SECONDS.
@@ -262,10 +264,10 @@ local function findRide(dev, ride)
 	if ride.creature and ride.creature:IsValid() then
 		return
 	end
-	if os.clock() - ride.scanned < SCAN_SECONDS then
+	if Clock.now() - ride.scanned < SCAN_SECONDS then
 		return
 	end
-	ride.scanned = os.clock()
+	ride.scanned = Clock.now()
 	ride.broom, ride.creature = nil, nil
 	for _, broom in ipairs(FindAllOf("FlyingBroom") or {}) do
 		if

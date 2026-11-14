@@ -62,7 +62,7 @@ end
 ---@return string path
 function Screenshot:request(options)
 	local journal = self.journal
-	local controller = self.player:controller(journal:now())
+	local controller = self.player:controller()
 	if not controller then
 		error("no player controller to run the screenshot command", 0)
 	end

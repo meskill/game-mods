@@ -1,9 +1,12 @@
+local Clock = require("ue4ss.clock")
+
 ---Caches an object that is expensive to find, such as one located by scanning
 ---every instance of a class, and limits how often a missing object is searched for.
 ---@class UE4SSLookup
 ---@field private interval number
 ---@field private search fun(...): any
 ---@field private keep fun(object: any, ...): boolean
+---@field private clock fun(): number
 ---@field private object any
 ---@field private nextSearchAt number
 local Lookup = {}
@@ -24,27 +27,30 @@ end
 ---@param search fun(...): any Returns the object, or nil if there is none yet.
 ---@param keep? fun(object: any, ...): boolean Whether the cached object still
 ---applies; defaults to checking that it is valid.
+---@param clock? fun(): number Seconds that never go backwards; defaults to
+---ue4ss.clock.
 ---@return UE4SSLookup
-function Lookup.new(interval, search, keep)
+function Lookup.new(interval, search, keep, clock)
 	return setmetatable({
 		interval = interval,
 		search = search,
 		keep = keep or isValid,
+		clock = clock or Clock.now,
 		nextSearchAt = -math.huge,
 	}, Lookup)
 end
 
 ---The cached object while it still applies. Otherwise searches, at most once
 ---per interval, and returns nil between searches.
----@param now number Seconds from any clock that never goes backwards.
 ---@param ... any Passed to keep and search.
 ---@return any
-function Lookup:get(now, ...)
+function Lookup:get(...)
 	local object = self.object
 	if object ~= nil and self.keep(object, ...) then
 		return object
 	end
 	self.object = nil
+	local now = self.clock()
 	if now < self.nextSearchAt then
 		return nil
 	end

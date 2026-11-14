@@ -86,11 +86,14 @@ end
 ---@return HogwartsMountTracker
 function Mounts.tracker(warn, player)
 	---@type HogwartsMountTracker
-	local tracker = setmetatable({
+	local tracker
+	tracker = setmetatable({
 		listener = {},
 		address = 0,
 		polls = 0,
-		creatures = Lookup.new(LOOKUP_INTERVAL, Mounts.findCreature, Mounts.ridesCreature),
+		creatures = Lookup.new(LOOKUP_INTERVAL, Mounts.findCreature, Mounts.ridesCreature, function()
+			return Tracker.clock(tracker)
+		end),
 	}, Tracker)
 	Loop.gameThread(POLL_MS, function()
 		Tracker.poll(tracker, player)
@@ -130,6 +133,13 @@ function Tracker:current()
 	return self.mount
 end
 
+---Seconds by the tracker's polls: creature scans follow polls, not wall time.
+---@private
+---@return number
+function Tracker:clock()
+	return self.polls * POLL_MS / 1000
+end
+
 ---Reports a broom that is gone without a dismount and creature mounts, then
 ---`riding` for the current mount.
 ---@private
@@ -161,8 +171,7 @@ function Tracker:checkCreature(pawn, controller)
 	if onCreature and Mounts.ridesCreature(possessed, address) then
 		creature = self.creatures:set(possessed) --[[@as ACreature_Character]]
 	elseif onCreature or pawn:GetIsOnAMountOrInTransition() then
-		local now = self.polls * POLL_MS / 1000
-		creature = self.creatures:get(now, address) --[[@as ACreature_Character?]]
+		creature = self.creatures:get(address) --[[@as ACreature_Character?]]
 	else
 		self.creatures:clear()
 	end

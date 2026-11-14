@@ -73,14 +73,14 @@ end
 ---before, so the player option of hooks applies from the first call.
 ---@param name? string
 function Session:startTracking(name)
-	self.player:refresh(self.journal:now())
+	self.player:refresh()
 	return self.tracker:start(name)
 end
 
 ---Periodic work on the game thread while tracking: player lookup.
 function Session:tick()
 	if self:tracking() then
-		self.player:refresh(self.journal:now())
+		self.player:refresh()
 	end
 end
 

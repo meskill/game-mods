@@ -6,7 +6,7 @@ local Loop = require("ue4ss.loop")
 local Log = require("ue4ss.log")
 local Server = require("server")
 local AdaptiveTrigger = require("adaptive_triggers")
-local getTime = require("net.socket").gettime
+local Clock = require("ue4ss.clock")
 local SpellCasts = require("hogwarts.spells")
 local MountTracking = require("hogwarts.mounts")
 local Wand = require("hogwarts.wand")
@@ -58,7 +58,7 @@ local OFF_EFFECT = { mode = AdaptiveTrigger.Mode.OFF, args = {} }
 ---The player while in gameplay (not paused, in a cinematic or dead), or nil.
 ---@return HogwartsPlayer?
 local function activePlayer()
-	local player = Player.find(getTime())
+	local player = Player.find()
 	return player and player.active and player or nil
 end
 
@@ -168,7 +168,7 @@ ExecuteAsync(function()
 			return
 		end
 		spellEffect = nil
-		local now = getTime()
+		local now = Clock.now()
 		spellEndedAt = now
 		if apply and onFoot then
 			applyEffect(RIGHT_TRIGGER, wandEffect(now))
@@ -182,12 +182,12 @@ ExecuteAsync(function()
 				-- A replaced cast already cleared its effect without re-applying R2.
 				endSpellEffect(false)
 				if onFoot then
-					applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
+					applyEffect(RIGHT_TRIGGER, wandEffect(Clock.now()))
 				end
 				return
 			end
 			spellEffect = effect
-			spellEffectEndsAt = effect.duration and getTime() + effect.duration or math.huge
+			spellEffectEndsAt = effect.duration and Clock.now() + effect.duration or math.huge
 			-- A new cast must refresh even an identical effect.
 			applyEffect(RIGHT_TRIGGER, effect, true)
 		end,
@@ -221,7 +221,7 @@ ExecuteAsync(function()
 	-- Arm and raise changes apply at once instead of waiting for the next poll.
 	armChanged = function()
 		if onFoot then
-			applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
+			applyEffect(RIGHT_TRIGGER, wandEffect(Clock.now()))
 		end
 	end
 
@@ -249,13 +249,13 @@ ExecuteAsync(function()
 		-- 3. On foot: L2 is unused, R2 follows the wand; spell hooks report casts.
 		onFoot = true
 		spells:resume()
-		if spellEffect and getTime() >= spellEffectEndsAt then
+		if spellEffect and Clock.now() >= spellEffectEndsAt then
 			endSpellEffect(false)
 		end
 		if appliedEffects[LEFT_TRIGGER] then
 			applyEffect(LEFT_TRIGGER, OFF_EFFECT)
 		end
-		applyEffect(RIGHT_TRIGGER, wandEffect(getTime()))
+		applyEffect(RIGHT_TRIGGER, wandEffect(Clock.now()))
 	end
 
 	Loop.gameThread(POLL_INTERVAL_MS, function()

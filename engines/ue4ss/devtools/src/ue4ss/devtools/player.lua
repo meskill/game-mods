@@ -20,10 +20,9 @@ function Player.new()
 end
 
 ---Re-reads the controller and its pawn. Call once per update.
----@param now number Seconds from a clock that never goes backwards.
-function Player:refresh(now)
+function Player:refresh()
 	local addresses = {}
-	local controller = self.controllers:get(now) --[[@as APlayerController?]]
+	local controller = self.controllers:get() --[[@as APlayerController?]]
 	if controller then
 		addresses[controller:GetAddress()] = true
 		local pawn = Reflect.valid(controller.Pawn)
@@ -35,10 +34,9 @@ function Player:refresh(now)
 end
 
 ---The player controller, or nil while there is none.
----@param now number
 ---@return APlayerController?
-function Player:controller(now)
-	return self.controllers:get(now) --[[@as APlayerController?]]
+function Player:controller()
+	return self.controllers:get() --[[@as APlayerController?]]
 end
 
 ---@param object UObject?

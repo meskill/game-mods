@@ -12,7 +12,7 @@ local Api = {}
 ---@param session DebugSession
 ---@return DebugApi
 function Api.new(session)
-	local journal, tracker, player = session.journal, session.tracker, session.player
+	local tracker, player = session.tracker, session.player
 
 	---The functions passed to the experiment as `dev`.
 	---@class DebugApi
@@ -22,12 +22,12 @@ function Api.new(session)
 
 	---The local player controller, or nil.
 	function api.pc()
-		return player:controller(journal:now())
+		return player:controller()
 	end
 
 	---The local player's pawn, or nil.
 	function api.pawn()
-		local controller = player:controller(journal:now())
+		local controller = player:controller()
 		return controller and Reflect.valid(controller.Pawn) or nil
 	end
 

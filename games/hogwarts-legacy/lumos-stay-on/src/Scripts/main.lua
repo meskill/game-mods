@@ -1,6 +1,7 @@
 -- Keeps Lumos lit after it is cast, and the wand raised while it is; see lumos.lua.
 -- Replaces the LumosAlwaysStayOn mod: disable that one, both move the same light.
 
+local Clock = require("ue4ss.clock")
 local Loop = require("ue4ss.loop")
 local Log = require("ue4ss.log")
 local Spells = require("hogwarts.spells")
@@ -34,7 +35,7 @@ local ok, err = pcall(RegisterHook, SWITCHED, function(_, activated)
 	-- UE4SS passes the parameters wrapped; ActivatedSpell can be invalid.
 	local tool = (activated --[[@as any]]):get()
 	if tool:IsValid() then
-		keeper:switched(tool:GetAddress(), os.clock())
+		keeper:switched(tool:GetAddress(), Clock.now())
 	end
 end)
 if not ok then
@@ -57,10 +58,9 @@ if DEBUG then
 end
 
 Loop.gameThread(POLL_INTERVAL_MS, function()
-	-- os.clock() is wall-clock time since process start on Windows (MSVC CRT).
-	local now = os.clock()
+	local now = Clock.now()
 	-- On foot in gameplay: not paused, in a cinematic, dead or on a mount.
-	local player = Player.find(now)
+	local player = Player.find()
 	if not player or not player.active or player.mounted then
 		spells:pause()
 		return

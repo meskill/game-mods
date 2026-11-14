@@ -70,24 +70,24 @@ describe("hogwarts.player", function()
 
 	it("finds nothing without a player character, e.g. on the map", function()
 		controller.Pawn = actor("/Script/Phoenix.MapPawn")
-		assert.is_nil(Player.find(0))
+		assert.is_nil(Player.find())
 	end)
 
 	it("is active only while not paused, in a cinematic or dead", function()
 		local pawn = character()
 		controller.Pawn = pawn
-		assert.is_true(Player.find(0).active)
+		assert.is_true(Player.find().active)
 
 		paused = true
-		local player = Player.find(0)
+		local player = Player.find()
 		assert.is_true(player.paused)
 		assert.is_false(player.active)
 
 		paused, pawn.InCinematic = false, true
-		assert.is_false(Player.find(0).active)
+		assert.is_false(Player.find().active)
 
 		pawn.InCinematic, pawn.dead = false, true
-		assert.is_false(Player.find(0).active)
+		assert.is_false(Player.find().active)
 	end)
 
 	it("returns the rider when the controller possesses a ridden creature", function()
@@ -95,7 +95,7 @@ describe("hogwarts.player", function()
 		pawn.onMount = true
 		controller.Pawn = creature(pawn)
 
-		local player = Player.find(0)
+		local player = Player.find()
 
 		assert.equals(pawn, player.pawn)
 		assert.equals(controller, player.controller)

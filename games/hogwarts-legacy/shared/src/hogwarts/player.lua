@@ -27,10 +27,9 @@ local controllers = Lookup.new(SEARCH_INTERVAL, Objects.playerController)
 
 ---The player and its state, or nil while there is no player character (title
 ---screen, loading, the map's pawn). Call on the game thread.
----@param now number Seconds from a clock that never goes backwards; paces the controller search.
 ---@return HogwartsPlayer?
-function Player.find(now)
-	local controller = controllers:get(now) --[[@as APlayerController?]]
+function Player.find()
+	local controller = controllers:get() --[[@as APlayerController?]]
 	if not controller then
 		return nil
 	end

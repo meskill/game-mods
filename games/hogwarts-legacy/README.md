@@ -40,7 +40,7 @@ character and reads its state:
 ```lua
 local Player = require("hogwarts.player")
 
-local player = Player.find(os.clock()) -- nil: title screen, map open, loading
+local player = Player.find() -- nil: title screen, map open, loading
 if player and player.active and not player.mounted then
 	-- player.pawn, player.controller
 end
@@ -55,8 +55,8 @@ end
 | `mounted` | the player rides a mount, or gets on or off one |
 
 On a creature mount `pawn` is still the player, its rider. Call it on the
-game thread; the clock paces the search for the player controller (once a
-second while there is none). The flags come from the game's own state, so a
+game thread; while there is no player controller it searches for one at most
+once a second. The flags come from the game's own state, so a
 fast travel's loading screen counts as `active` once the game unpauses: use
 `hogwarts.gameplay` for that.
 

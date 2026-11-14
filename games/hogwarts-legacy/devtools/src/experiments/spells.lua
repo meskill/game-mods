@@ -41,6 +41,8 @@
 -- false (Projectiles). The base Incendio is assumed to spread no fire (not
 -- tested).
 
+local Clock = require("ue4ss.clock")
+
 local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
 local MUNITION_CLASS = "/Script/Munitions.MunitionType_Base"
 local INCENDIO_TOOL_CLASS = "/Script/Phoenix.IncendioSpellTool"
@@ -139,7 +141,7 @@ end
 ---@field object UObject
 ---@field address integer
 ---@field label string
----@field born number Seconds (os.clock) when it spawned.
+---@field born number Clock.now() when it spawned.
 
 ---Remembers objects of a class from their creation, for polling.
 ---@param class string
@@ -154,7 +156,7 @@ local function followSpawns(class)
 			object = object,
 			address = object:GetAddress(),
 			label = ("%s %X"):format(className(object), object:GetAddress()),
-			born = os.clock(),
+			born = Clock.now(),
 		}
 		if #followed > MAX_FOLLOWED then
 			table.remove(followed, 1)
@@ -171,7 +173,7 @@ end
 local function pollFollowed(followed, poll, gone)
 	for i = #followed, 1, -1 do
 		local entry = followed[i]
-		local age = os.clock() - entry.born
+		local age = Clock.now() - entry.born
 		local live = entry.object:IsValid() and entry.object:GetAddress() == entry.address
 		if not live then
 			table.remove(followed, i)
