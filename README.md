@@ -23,7 +23,7 @@ During active gameplay R2 follows the wand:
 The hold is read from the player controller:
 `APlayerController:GetInputKeyTimeDown` for the `Gamepad_RightTrigger` key.
 Whether the game reports DualSense R2 under that key is not yet verified in
-game; debug mode logs `R2 down|held|up (down <s>)` on every change.
+game.
 
 ### Mounts
 
@@ -51,7 +51,6 @@ those moments get feedback:
 | Combat charge (`CombatChargeActive`, Graphorn) | Heavier, faster hooves (`Galloping` 0, 9, feet 4 and 6, 6 Hz) |
 | Flying (`IsFlying()`, Hippogriff) | Slow wingbeats (`Galloping` 0, 9, feet 1 and 3, 1 Hz) |
 
-Debug mode logs `mount <kind> state gallop|charge|flight` on every change.
 The creature reads come from the dumped types and are not verified in game.
 
 Mount tracking lives in the shared `hogwarts.mounts` module
@@ -68,11 +67,8 @@ sample also requires the player to still be on a mount (or the controller to
 possess it): a broom keeps its `MountedCharacter` after the rider drops off
 it. Nitro counts as used up when `GetBoostMeterAmount()` falls to 1% of
 `GetMaxBoostMeter()` and as reloaded once it refills to 10%
-(`READY_FRACTION` in `mounts.lua`). Debug mode logs
-`mount mounted <kind> <name>`, `mount dismounted <kind>`,
-`broom boost=<b> recharging=<b> meter=<amount>/<max>` on every boost or
-recharge change, and `nitro empty|recharged`. The broom reads are not verified
-in game yet; the creature-mount reads follow the dumped types only.
+(`READY_FRACTION` in `mounts.lua`). The broom reads are not verified in game
+yet; the creature-mount reads follow the dumped types only.
 
 Motion-control fire effects follow this model:
 
@@ -101,17 +97,14 @@ Cast detection lives in the shared `hogwarts.spells` module
 (`games/hogwarts-legacy/shared`), which reports `fired`, `impact`, and `ended`
 events. It treats a held cast as fired on the first of: `IsStarted_K2()`
 sampled true, a new `ASpellTool:GetActiveMunition()` projectile (one that was
-not already live when the hold began), or the cast ending. Debug mode logs
-`cast held`, `spell fired database=<name> via started|projectile|cast end`,
-and the mod's `spell effect database=<name> matched|default`. Without a
-sampled start or new projectile, the fire effect is up to one sample late,
-after `IsStopped()` returns to true.
+not already live when the hold began), or the cast ending. Without a sampled
+start or new projectile, the fire effect is up to one sample late, after
+`IsStopped()` returns to true.
 
 Projectile spells end earlier: some munitions (Diffindo's) stay alive after
 the hit to play impact visuals, so their effect ends at the cast's `impact`:
 the first sample where the projectile, having been seen moving, reports
-`AActor:GetVelocity()` below 1 cm/s. Debug mode logs
-`projectile stopped after <s>`.
+`AActor:GetVelocity()` below 1 cm/s.
 Whether every projectile munition reports zero velocity on impact is not yet
 verified in game.
 
@@ -119,11 +112,9 @@ Other fire effects last until the cast ends: each 100 ms sample,
 `GetActiveMunition()` must return a valid actor that is not being destroyed.
 The first sample after firing without one ends the cast, so a spell with no
 projectile gets a single-sample pulse. A cast is capped at 3 s after firing,
-in case a pooled projectile never reports destruction. Debug mode logs
-`projectile <address> <name> life=<seconds>`, `projectile gone after <s>`, and
-`spell ended database=<name> gone|capped|replaced|cancelled|interrupted [after <s>]`; whether every
-spell's projectile is exposed through `GetActiveMunition()` is not yet
-verified in game.
+in case a pooled projectile never reports destruction. Whether every spell's
+projectile is exposed through `GetActiveMunition()` is not yet verified in
+game.
 
 Profiles are in `games/hogwarts-legacy/dualsense-support/src/Scripts/spells.lua`. They are
 custom DSX presets, not recovered Sony profiles. The local player's wand is
@@ -137,10 +128,6 @@ This is sampled state detection, not a complete cast-event stream. Casts
 shorter than a sample, or back-to-back casts whose stopped gap falls between
 samples, can be missed. Whether selecting a spell without casting can clear
 `IsStopped()` has not been observed.
-
-`DEBUG = true` in `main.lua` logs `[HogwartsDualSense][debug]` lines for
-gameplay-state changes, spell lifecycle flags, cast decisions, sent packets,
-and DSX replies.
 
 The player controller is cached while valid; pawn changes are still checked on
 each gameplay poll. If the controller disappears during travel, rediscovery is
@@ -159,9 +146,8 @@ Profiles match the exact lowercased `DatabaseName`. In-game logs showed
 `Depulso`, `Descendo`, `Levioso`, and `ArrestoMomentum`. The other names follow
 the dumped Phoenix `*SpellTool` class names, with aliases for the spoken names
 (`imperio`, `petrificustotalus`, `wingardiumleviosa`); they are not yet
-verified in game. Unlisted casts use the default effect and log
-`spell effect database=<name> default` in debug mode, which gives the exact name
-to add.
+verified in game. Unlisted casts use the default effect; the devtools spells
+experiment logs their exact name to add.
 
 `main.lua` owns DSX discovery, the gameplay gate, packet sending, and the
 polling loop; `spells.lua` owns the spell profiles; the shared
@@ -169,8 +155,8 @@ polling loop; `spells.lua` owns the spell profiles; the shared
 
 To verify, load a save and use **Restart All Mods** in the UE4SS GUI (on the
 inspected installation, `EnableHotReloadSystem = 0`: Ctrl+R does not reload
-mods). Look for `[HogwartsDualSense] Local wand spell polling ready`, then cast
-a supported spell and look for `[HogwartsDualSense] Spell effect: <name>`.
+mods). Look for `[HogwartsDualSense] Trigger effects ready for controller <n>`,
+then cast a supported spell.
 To identify a spell without a profile, inspect the active spell instance's
 `DatabaseName` in UE4SS **Live View**. Do not invoke `Start`, `StopActive`, or
 other mutating functions merely to inspect state. The generated declarations

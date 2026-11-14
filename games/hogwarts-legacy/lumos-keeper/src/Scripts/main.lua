@@ -5,7 +5,6 @@ local Clock = require("ue4ss.clock")
 local Loop = require("ue4ss.loop")
 local Log = require("ue4ss.log")
 local Spells = require("hogwarts.spells")
-local Wand = require("hogwarts.wand")
 local Player = require("hogwarts.player")
 local Lumos = require("lumos")
 
@@ -13,15 +12,12 @@ local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
 local SWITCHED = "/Script/Phoenix.WandTool:OnActiveSpellToolChanged"
 -- How often a kept light is forced on and the wand up.
 local POLL_INTERVAL_MS = 200
--- Logs every change of the player's arm state.
----@type boolean
-local DEBUG = true
 
-local log = Log.new("[LumosStayOn]")
-local keeper = Lumos.keeper(log)
+local log = Log.new("[LumosKeeper]")
+local keeper = Lumos.keeper(log, Clock.now)
 
 -- The hooks register at load and only record what happened; the poll below
--- acts on it. The tracker reports casts while the player is on foot in gameplay.
+-- acts on it. The tracker reports casts while the player is in gameplay.
 local spells = Spells.tracker(log)
 spells:listen({
 	fired = function(cast)
@@ -35,7 +31,7 @@ local ok, err = pcall(RegisterHook, SWITCHED, function(_, activated)
 	-- UE4SS passes the parameters wrapped; ActivatedSpell can be invalid.
 	local tool = (activated --[[@as any]]):get()
 	if tool:IsValid() then
-		keeper:switched(tool:GetAddress(), Clock.now())
+		keeper:switched(tool:GetAddress())
 	end
 end)
 if not ok then
@@ -45,28 +41,19 @@ end
 -- A new player, e.g. after loading a save, starts without a kept light. The
 -- object is still being constructed: only Lua state changes here.
 NotifyOnNewObject(PLAYER_CLASS, function()
-	keeper:forget("player created")
+	keeper:forget()
 end)
 
-if DEBUG then
-	local debugLog = Log.new("[LumosStayOn][debug]")
-	Wand.subscribe({
-		changed = function(state, last)
-			debugLog(("arm %s -> %s"):format(tostring(last), tostring(state)))
-		end,
-	})
-end
-
 Loop.gameThread(POLL_INTERVAL_MS, function()
-	local now = Clock.now()
-	-- On foot in gameplay: not paused, in a cinematic, dead or on a mount.
 	local player = Player.find()
-	if not player or not player.active or player.mounted then
+	-- In gameplay: not paused, in a cinematic or dead. On a mount too: the
+	-- keeper lets go of the light there.
+	if not player or not player.active then
 		spells:pause()
 		return
 	end
 	spells:resume()
-	keeper:update(player.pawn, now)
+	keeper:update(player.pawn)
 end, function(message)
 	log("Update failed: " .. message)
 end)

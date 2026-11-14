@@ -1,4 +1,4 @@
--- Lumos kept on with the wand raised, for games/hogwarts-legacy/lumos-stay-on.
+-- Lumos kept on with the wand raised, for games/hogwarts-legacy/lumos-keeper.
 -- Logs what the game (and the mod, if loaded) does around a Lumos cast, and
 -- binds keys that make the mod's calls by hand:
 --   F1  keep:    DeactivateLumos, CancelCurrentSpell, ActivateLumos
@@ -8,7 +8,7 @@
 --   F5  release: DeactivateLumos, CancelCurrentSpell
 -- Keys act on the Lumos tool of the last Lumos cast and screenshot 300 ms later.
 --
--- Run, out of combat, with LumosAlwaysStayOn off and lumos-stay-on off to see
+-- Run, out of combat, with LumosAlwaysStayOn off and lumos-keeper off to see
 -- the game alone (on, to see the mod): start tracking; mark before each step.
 -- 1. Cast Lumos; wait 2 s; cast Lumos again; wait 2 s.
 -- 2. Cast Lumos; wait 1 s; F1; F2; wait 2 s; cast Confringo; wait 2 s.

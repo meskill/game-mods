@@ -1,4 +1,4 @@
-package = "hogwarts-legacy-lumos-stay-on"
+package = "hogwarts-legacy-lumos-keeper"
 version = "0.1.0"
 lua = "5.4"
 

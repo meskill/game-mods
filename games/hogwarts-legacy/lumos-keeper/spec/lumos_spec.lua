@@ -12,10 +12,11 @@ end
 
 ---A player whose wand holds a Lumos spell tool. Game calls the keeper makes are
 ---recorded in `calls` and change the scene the way the game did in the
----experiment: `request` is the arm state requested at the Lumos priority.
+---experiment: `request` is the arm state requested at the Lumos priority,
+---`mounted` whether the player is on a mount, `time` the keeper's clock.
 local function scene()
 	local calls = {}
-	local s = { calls = calls, request = 0, failing = false }
+	local s = { calls = calls, request = 0, failing = false, mounted = false, time = 0 }
 
 	-- `lit` is IsLumosActive(); `shining` is whether its light actor exists.
 	local lumos = { lit = false, shining = false, IsValid = valid }
@@ -72,6 +73,9 @@ local function scene()
 	function pawn:GetRightArmState(priority)
 		return priority == 8 and s.request or 0
 	end
+	function pawn:GetIsOnAMountOrInTransition()
+		return s.mounted
+	end
 	function pawn:SetRightArmState(state, priority, broadcast)
 		calls[#calls + 1] = ("arm %d@%d %s"):format(state, priority, tostring(broadcast))
 		if priority == 8 then
@@ -84,6 +88,25 @@ local function scene()
 end
 
 local function quiet() end
+
+---A keeper on the scene's clock, `s.time`.
+local function newKeeper(s)
+	return Lumos.keeper(quiet, function()
+		return s.time
+	end)
+end
+
+---Updates the keeper at `time` seconds.
+local function update(s, keeper, time)
+	s.time = time
+	keeper:update(s.pawn)
+end
+
+---The wand switches to `tool` at `time` seconds.
+local function switched(s, keeper, tool, time)
+	s.time = time
+	keeper:switched(tool)
+end
 
 ---The player casts Lumos: the tracker reports it, the wand lights it and holds
 ---the arm up.
@@ -113,10 +136,10 @@ end
 
 ---A keeper that kept a Lumos cast at 0.2 s from 0.8 s, with the wand raised.
 local function kept(s)
-	local keeper = Lumos.keeper(quiet)
+	local keeper = newKeeper(s)
 	cast(s, keeper)
-	keeper:update(s.pawn, 0.2)
-	keeper:update(s.pawn, 0.8)
+	update(s, keeper, 0.2)
+	update(s, keeper, 0.8)
 	assert.same(calls(MOVE, ARM), s.calls)
 	clear(s)
 	return keeper
@@ -125,50 +148,50 @@ end
 describe("lumos", function()
 	it("moves a lit cast off the wand and raises it once the cast animation is done", function()
 		local s = scene()
-		local keeper = Lumos.keeper(quiet)
+		local keeper = newKeeper(s)
 		cast(s, keeper)
-		keeper:update(s.pawn, 0.2)
-		keeper:update(s.pawn, 0.6)
+		update(s, keeper, 0.2)
+		update(s, keeper, 0.6)
 		assert.same({}, s.calls)
 
-		keeper:update(s.pawn, 0.8)
+		update(s, keeper, 0.8)
 		assert.same(calls(MOVE, ARM), s.calls)
 	end)
 
 	it("leaves a cast that does not light to the game", function()
 		local s = scene()
-		local keeper = Lumos.keeper(quiet)
+		local keeper = newKeeper(s)
 		keeper:fired({ name = "lumos", spell = s.lumos })
-		keeper:update(s.pawn, 0.2)
-		keeper:update(s.pawn, 2.4)
-		keeper:update(s.pawn, 2.6)
+		update(s, keeper, 0.2)
+		update(s, keeper, 2.4)
+		update(s, keeper, 2.6)
 		assert.same({}, s.calls)
 
 		cast(s, keeper)
-		keeper:update(s.pawn, 3)
-		keeper:update(s.pawn, 3.6)
+		update(s, keeper, 3)
+		update(s, keeper, 3.6)
 		assert.same(calls(MOVE, ARM), s.calls)
 	end)
 
 	it("ignores other spells' casts", function()
 		local s = scene()
-		local keeper = Lumos.keeper(quiet)
+		local keeper = newKeeper(s)
 		keeper:fired({ name = "confringo", spell = s.other })
 		s.lumos.lit, s.lumos.shining = true, true
-		keeper:update(s.pawn, 0.2)
-		keeper:update(s.pawn, 1)
+		update(s, keeper, 0.2)
+		update(s, keeper, 1)
 		assert.same({}, s.calls)
 	end)
 
 	it("forces the light on and the wand up on every update while kept", function()
 		local s = scene()
 		local keeper = kept(s)
-		keeper:update(s.pawn, 1)
+		update(s, keeper, 1)
 		assert.same({}, s.calls)
 
 		-- Something put the light out and dropped the arm request.
 		s.lumos.shining, s.request = false, 0
-		keeper:update(s.pawn, 1.2)
+		update(s, keeper, 1.2)
 		assert.same(calls(RESTORE, ARM), s.calls)
 	end)
 
@@ -181,14 +204,14 @@ describe("lumos", function()
 		end
 		s.lumos.shining = false
 		for i = 1, 5 do
-			keeper:update(s.pawn, 1 + i * 0.2)
+			update(s, keeper, 1 + i * 0.2)
 		end
 		clear(s)
-		keeper:update(s.pawn, 2.2)
+		update(s, keeper, 2.2)
 		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
 
 		clear(s)
-		keeper:update(s.pawn, 2.4)
+		update(s, keeper, 2.4)
 		assert.same({}, s.calls)
 	end)
 
@@ -196,19 +219,19 @@ describe("lumos", function()
 		local s = scene()
 		local keeper = kept(s)
 		-- The wand switches to the Lumos tool and the game takes the light away.
-		keeper:switched(s.lumos:GetAddress(), 0.95)
+		switched(s, keeper, s.lumos:GetAddress(), 0.95)
 		s.lumos.shining = false
-		keeper:update(s.pawn, 1)
+		update(s, keeper, 1)
 		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
 
 		-- Off: the arm and light are left to the game; a new cast is kept again.
 		clear(s)
 		s.request = 0
-		keeper:update(s.pawn, 1.2)
+		update(s, keeper, 1.2)
 		assert.same({}, s.calls)
 		cast(s, keeper)
-		keeper:update(s.pawn, 1.4)
-		keeper:update(s.pawn, 2)
+		update(s, keeper, 1.4)
+		update(s, keeper, 2)
 		assert.same(calls(MOVE, ARM), s.calls)
 	end)
 
@@ -216,18 +239,18 @@ describe("lumos", function()
 		local s = scene()
 		local keeper = kept(s)
 		-- A spell set preview switches to the Lumos tool and back.
-		keeper:switched(s.lumos:GetAddress(), 0.95)
-		keeper:update(s.pawn, 1)
+		switched(s, keeper, s.lumos:GetAddress(), 0.95)
+		update(s, keeper, 1)
 		assert.same({}, s.calls)
 	end)
 
 	it("restores a light lost long after a switch, or after another tool's switch", function()
 		local s = scene()
 		local keeper = kept(s)
-		keeper:switched(s.lumos:GetAddress(), 0.9)
-		keeper:switched(s.other:GetAddress(), 1.5)
+		switched(s, keeper, s.lumos:GetAddress(), 0.9)
+		switched(s, keeper, s.other:GetAddress(), 1.5)
 		s.lumos.shining = false
-		keeper:update(s.pawn, 1.6)
+		update(s, keeper, 1.6)
 		assert.same(RESTORE, s.calls)
 	end)
 
@@ -235,19 +258,53 @@ describe("lumos", function()
 		local s = scene()
 		local keeper = kept(s)
 		s.failing = true
-		keeper:update(s.pawn, 1)
+		update(s, keeper, 1)
 		s.failing = false
 		s.lumos.shining, s.request = false, 0
-		keeper:update(s.pawn, 1.2)
+		update(s, keeper, 1.2)
 		assert.same({}, s.calls)
 	end)
 
 	it("forgets the light without calling the game when a new player is created", function()
 		local s = scene()
 		local keeper = kept(s)
-		keeper:forget("player created")
+		keeper:forget()
 		s.lumos.shining, s.request = false, 0
-		keeper:update(s.pawn, 1)
+		update(s, keeper, 1)
+		assert.same({}, s.calls)
+	end)
+
+	it("puts a kept light out and lowers the wand on a mount, and keeps the next cast on foot", function()
+		local s = scene()
+		local keeper = kept(s)
+		s.mounted = true
+		update(s, keeper, 1)
+		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
+
+		-- Riding: Lumos cast on the mount is not kept.
+		clear(s)
+		cast(s, keeper)
+		update(s, keeper, 1.2)
+		update(s, keeper, 2)
+		assert.same({}, s.calls)
+
+		-- Back on foot, a new cast is kept again.
+		s.mounted = false
+		cast(s, keeper)
+		update(s, keeper, 2.2)
+		update(s, keeper, 2.8)
+		assert.same(calls(MOVE, ARM), s.calls)
+	end)
+
+	it("drops a cast being watched on a mount without calling the game", function()
+		local s = scene()
+		local keeper = newKeeper(s)
+		cast(s, keeper)
+		update(s, keeper, 0.2)
+		s.mounted = true
+		update(s, keeper, 0.4)
+		s.mounted = false
+		update(s, keeper, 0.8)
 		assert.same({}, s.calls)
 	end)
 end)

@@ -23,6 +23,9 @@
 -- keeper deactivates it and clears its arm request, so the wand comes down.
 -- A light gone any other way is restored.
 --
+-- On a mount the game has no Lumos: update() puts a kept light out and clears
+-- its arm request, and ignores casts there; the next cast on foot is kept.
+--
 -- A failing game call (objects going away while loading) and a new player
 -- (after loading) make the keeper forget the light without calling the game.
 --
@@ -75,12 +78,13 @@ end
 
 ---Keeps the local player's Lumos lit after a cast, with the wand raised.
 ---@class LumosKeeper
----@field private log fun(message: string) Receives state changes and restores.
+---@field private warn fun(message: string) Receives game calls that failed.
+---@field private now fun(): number Seconds from a clock that never goes backwards.
 ---@field private state LumosState
----@field private since number The `now` the state was entered.
+---@field private since number The time the state was entered.
 ---@field private lumos? ALumosSpellTool The Lumos spell tool of the cast being kept.
 ---@field private cast? ALumosSpellTool A Lumos cast reported since the last update.
----@field private switchedAt number `now` of the last switch to the kept Lumos tool.
+---@field private switchedAt number Time of the last switch to the kept Lumos tool.
 ---@field private restores integer Updates in a row that restored the light.
 ---@field private raised boolean The keeper set its arm request.
 local Keeper = {}
@@ -88,11 +92,13 @@ Keeper.__index = Keeper
 
 local Lumos = {}
 
----@param log fun(message: string) Receives state changes and restores.
+---@param warn fun(message: string) Receives game calls that failed.
+---@param now fun(): number Seconds from a clock that never goes backwards.
 ---@return LumosKeeper
-function Lumos.keeper(log)
+function Lumos.keeper(warn, now)
 	return setmetatable({
-		log = log,
+		warn = warn,
+		now = now,
 		state = "off",
 		since = 0,
 		switchedAt = -math.huge,
@@ -114,30 +120,23 @@ end
 ---Records a wand switching to a spell tool (`WandTool:OnActiveSpellToolChanged`),
 ---any character's; only a switch to the Lumos tool being kept counts.
 ---@param tool integer The activated spell tool's address.
----@param now number Seconds, from the clock passed to update().
-function Keeper:switched(tool, now)
+function Keeper:switched(tool)
 	local lumos = self.lumos
 	if lumos and lumos:IsValid() and lumos:GetAddress() == tool then
-		self.switchedAt = now
+		self.switchedAt = self.now()
 	end
 end
 
 ---@private
 ---@param state LumosState
 ---@param now number
----@param reason string
-function Keeper:enter(state, now, reason)
+function Keeper:enter(state, now)
 	self.state, self.since = state, now
-	self.log(("%s: %s"):format(state, reason))
 end
 
 ---Forgets the light and anything recorded without calling the game: its
 ---objects are gone or failing, e.g. a new player after loading.
----@param reason string
-function Keeper:forget(reason)
-	if self.state ~= "off" then
-		self.log("off: " .. reason)
-	end
+function Keeper:forget()
 	self.state, self.lumos, self.cast, self.switchedAt, self.raised = "off", nil, nil, -math.huge, false
 end
 
@@ -145,15 +144,14 @@ end
 ---@private
 ---@param pawn ABiped_Player
 ---@param now number
----@param reason string
-function Keeper:release(pawn, now, reason)
+function Keeper:release(pawn, now)
 	local lumos = self.lumos --[[@as ALumosSpellTool]]
 	lumos:DeactivateLumos(LIGHT_PRIORITY, lumos)
 	if self.raised then
 		pawn:SetRightArmState(ARM_NONE, ARM_PRIORITY, true)
 	end
 	self.lumos, self.raised = nil, false
-	self:enter("off", now, reason)
+	self:enter("off", now)
 end
 
 ---Forces the kept light on and the wand up, unless Lumos was cast at it.
@@ -163,27 +161,26 @@ end
 function Keeper:force(pawn, now)
 	local lumos = self.lumos --[[@as ALumosSpellTool]]
 	local shines = shining(lumos)
+	-- Lumos cast again: put the light out.
 	if not shines and now - self.switchedAt <= SWITCH_WINDOW then
-		self:release(pawn, now, "Lumos cast again")
+		self:release(pawn, now)
 		return
 	end
 
 	if shines then
 		self.restores = 0
 	elseif self.restores >= MAX_RESTORES then
-		self:release(pawn, now, "the light could not be restored")
+		self:release(pawn, now)
 		return
 	else
 		lumos:DeactivateLumos(LIGHT_PRIORITY, lumos)
 		lumos:ActivateLumos(LIGHT_PRIORITY, lumos)
 		self.restores = self.restores + 1
-		self.log("kept: light restored")
 	end
 
 	if pawn:GetRightArmState(ARM_PRIORITY) ~= ARM_LUMOS then
 		pawn:SetRightArmState(ARM_LUMOS, ARM_PRIORITY, true)
 		self.raised = true
-		self.log("kept: wand raised")
 	end
 end
 
@@ -195,9 +192,20 @@ function Keeper:step(pawn, now)
 	self.cast = nil
 
 	if self.state == "off" then
-		if cast and cast:IsValid() then
+		if cast and cast:IsValid() and not pawn:GetIsOnAMountOrInTransition() then
 			self.lumos = cast
-			self:enter("casting", now, "Lumos cast")
+			self:enter("casting", now)
+		end
+		return
+	end
+
+	-- The game has no Lumos on a mount: let go of the light.
+	if pawn:GetIsOnAMountOrInTransition() then
+		if self.state == "kept" then
+			self:release(pawn, now)
+		else
+			self.lumos = nil
+			self:enter("off", now)
 		end
 		return
 	end
@@ -205,7 +213,7 @@ function Keeper:step(pawn, now)
 	local lumos = self.lumos --[[@as ALumosSpellTool]]
 	local wand = pawn:GetWand()
 	if not lumos:IsValid() or not wand or not wand:IsValid() then
-		self:forget("Lumos spell tool or wand gone")
+		self:forget()
 		return
 	end
 
@@ -222,23 +230,25 @@ function Keeper:step(pawn, now)
 		wand:CancelCurrentSpell()
 		lumos:ActivateLumos(LIGHT_PRIORITY, lumos)
 		self.restores = 0
-		self:enter("kept", now, "light moved off the wand")
+		self:enter("kept", now)
 		self:force(pawn, now)
 	elseif now >= self.since + CAST_TIMEOUT then
 		self.lumos = nil
-		self:enter("off", now, "the cast did not light")
+		self:enter("off", now)
 	end
 end
 
 ---Acts on what was recorded and forces a kept light. Call on the game thread
----every 200 ms while the player is on foot in gameplay. A failing game call
----makes the keeper forget the light.
+---every 200 ms while the player is in gameplay, also on a mount, where it lets
+---go of the light. A failing game call is reported and makes the keeper
+---forget the light.
 ---@param pawn ABiped_Player
----@param now number Seconds from a clock that never goes backwards.
-function Keeper:update(pawn, now)
-	local ok, err = pcall(self.step, self, pawn, now)
+function Keeper:update(pawn)
+	-- One reading for the whole update.
+	local ok, err = pcall(self.step, self, pawn, self.now())
 	if not ok then
-		self:forget("game call failed: " .. tostring(err))
+		self.warn("Game call failed, light forgotten: " .. tostring(err))
+		self:forget()
 	end
 end
 
