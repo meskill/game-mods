@@ -8,6 +8,7 @@ without restarting the shell.
 dist                                          # the mod containing the current directory
 dist -g hogwarts-legacy                       # every mod of the game
 dist -g hogwarts-legacy -m dualsense-support  # one mod
+dist -g hogwarts-legacy -m lumos-keeper -a    # one mod, plus its archive
 ```
 
 ## Mods
@@ -46,6 +47,10 @@ flowchart LR
    produces, only those the build type returned are deleted.
 4. `tmp` is kept for inspection. Each build first removes the directories in
    `dist/.tmp` last modified more than `TMP_MAX_AGE` (1 day) ago.
+5. With `--archive` (`-a`), `dist.nu` also zips `tmp/out` as `<name>/...` into
+   `dist/<game>/<game>-<name>-<version>.zip` (`version` from the mod's `lux.toml`),
+   with `tar -a` (Windows' bsdtar). The zip adds an empty `<name>/enabled.txt`, so
+   UE4SS starts the mod without a `mods.txt` entry; deployed builds don't get one.
 
 ## Steps
 

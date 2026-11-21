@@ -55,6 +55,17 @@ Build every mod of a game, or one mod with `-m`, from the `dev.cmd` shell (nativ
 dist                                           # the mod containing the current directory
 dist -g hogwarts-legacy                        # every mod of the game
 dist -g hogwarts-legacy -m dualsense-support   # one mod
+dist -g hogwarts-legacy -m dualsense-support -a  # one mod, plus its archive
 ```
 
 To deploy straight into a game installation, copy `.dist-overrides.example.toml` to `.dist-overrides.toml` (local, ignored by git) and set each game's installation directory.
+
+## AI use
+
+AI is fine for code and assets. These must come from you:
+
+- issues and pull request descriptions;
+- in-game testing: report only what you saw;
+- user-facing docs: mod READMEs, changelogs and mod pages.
+
+AI may polish your text (grammar, wording, format), but not add to it.

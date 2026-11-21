@@ -4,6 +4,10 @@
 #   dist                                          # the mod containing the cwd
 #   dist -g hogwarts-legacy                      # every mod of the game
 #   dist -g hogwarts-legacy -m dualsense-support  # one mod
+#   dist -g hogwarts-legacy -m lumos-keeper -a    # one mod, plus its archive
+#
+# With --archive (-a), each mod is also packed into
+# dist/<game>/<game>-<name>-<version>.zip (version from its lux.toml).
 #
 # mod.toml, in the mod's directory:
 #   name = "dualsense-support"   # -m; output dist/<game>/<name>
@@ -41,6 +45,7 @@ let BUILD_TYPES = {
 def main [
     --game (-g): string # Game directory name under games/, as in mod.toml `game`
     --mod (-m): string # Mod name (mod.toml `name`); every mod of the game when omitted
+    --archive (-a) # Also pack each mod into dist/<game>/<game>-<name>-<version>.zip
 ] {
     let root = $ROOT
     let all = discover-mods $root
@@ -72,13 +77,17 @@ def main [
         let output = output-dir $root $mod
         print $"(ansi blue)→ deploying to ($output)(ansi reset)"
         rule dark_gray
-        let written = build $root $mod $output
+        let result = build $root $mod $output
         rule dark_gray
-        if ($written | is-empty) {
+        if ($result.changed | is-empty) {
             print $"(ansi green)✓ up to date(ansi reset) ($output)"
         } else {
-            print $"(ansi green)✓ updated ($written | length) files(ansi reset) in ($output)"
-            $written | each { print $"  (ansi dark_gray)•(ansi reset) ($in)" } | ignore
+            print $"(ansi green)✓ updated ($result.changed | length) files(ansi reset) in ($output)"
+            $result.changed | each { print $"  (ansi dark_gray)•(ansi reset) ($in)" } | ignore
+        }
+        if $archive {
+            let file = pack $root $mod $result.out
+            print $"(ansi green)✓ archived(ansi reset) ($file)"
         }
         rule cyan
     }
@@ -121,10 +130,11 @@ def output-dir [root: path, mod: record]: nothing -> path {
 
 # Runs the mod's build type in a fresh dist/.tmp/<build> directory, then copies
 # its <tmp>/out into `output`, changed files only, and removes the paths the
-# build type returned that it did not produce. Returns the paths (relative to
-# `output`) that were written or removed. Build directories are kept for
-# inspection; ones last modified more than TMP_MAX_AGE ago are removed first.
-def build [root: path, mod: record, output: path]: nothing -> list<string> {
+# build type returned that it did not produce. Returns `out`, the build's
+# <tmp>/out, and `changed`, the paths (relative to `output`) that were written
+# or removed. Build directories are kept for inspection; ones last modified more
+# than TMP_MAX_AGE ago are removed first.
+def build [root: path, mod: record, output: path]: nothing -> record<out: path, changed: list<string>> {
     let tmp_root = $root | path join dist .tmp
     mkdir $tmp_root
     ls $tmp_root
@@ -143,7 +153,25 @@ def build [root: path, mod: record, output: path]: nothing -> list<string> {
         rm ($output | path join $file)
         $"($file) \(removed\)"
     }
-    $written | append $removed
+    { out: $out, changed: ($written | append $removed) }
+}
+
+# Zips the fresh build `out` as <name>/... into
+# dist/<game>/<game>-<name>-<version>.zip, the version taken from the mod's
+# lux.toml. The archive also gets an empty <name>/enabled.txt, so UE4SS starts
+# the mod without a mods.txt entry; deployed builds don't, to keep mods.txt
+# control while developing. Returns the archive's path.
+def pack [root: path, mod: record, out: path]: nothing -> path {
+    let version = open ($mod.dir | path join lux.toml) | get version
+    let file = $root | path join dist $mod.game $"($mod.game)-($mod.name)-($version).zip"
+    let stage = $out | path dirname | path join package
+    mkdir $stage
+    cp -r $out ($stage | path join $mod.name)
+    touch ($stage | path join $mod.name enabled.txt)
+    mkdir ($file | path dirname)
+    # bsdtar (System32's tar), as in lux.nu: -a writes zip from the suffix.
+    ^tar -a -c -f $file -C $stage $mod.name
+    $file
 }
 
 # Copies files from `source` into `target` whose content differs or that are
