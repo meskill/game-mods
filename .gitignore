@@ -1,13 +1,18 @@
 /.vscode/*
 !/.vscode/settings.json
-/.dist-overrides.toml
-/vendor/
+
+# lua/lux
 /luarocks.bat
 /lua.bat
 /lua_modules
 .lux
 /.luarocks
+
+# build
 /dist/
+/.dist-overrides.toml
+
 # run local experiments
+**/external-mods/
 experiment-local.lua
 experiment-data/

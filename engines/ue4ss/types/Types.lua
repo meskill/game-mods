@@ -552,28 +552,6 @@ EFindName = {
     FNAME_Add = 1
 }
 
----Returns the FName for this string or the FName for "None" if the name doesn't exist
----@param Name string
----@return FName
-function FName(Name) end
-
----Returns the FName for this ComparisonIndex or the FName for "None" if the name doesn't exist
----@param ComparisonIndex integer
----@return FName
-function FName(ComparisonIndex) end
-
----Finds or adds FName for the string, depending on FindType 
----@param Name string
----@param FindType EFindName|integer # Find = 0, Add = 1
----@return FName
-function FName(Name, FindType) end
-
----Finds or adds FName for the ComparisonIndex, depending on FindType 
----@param ComparisonIndex integer
----@param FindType EFindName|integer # Find = 0, Add = 1
----@return FName
-function FName(ComparisonIndex, FindType) end
-
 ---Returns a new FText object with passed string as content
 ---@param Text string
 ---@return FText
@@ -1047,7 +1025,16 @@ local FieldClass = {}
 function FieldClass:GetFName() end
 
 
+-- The constructor is declared as overloads of the class: separate global
+-- `function FName(...)` declarations replace the class, and FName values then
+-- lose their methods (ToString, GetComparisonIndex).
 ---@class FName
+---Returns the FName for this string or ComparisonIndex, or the FName for "None" if the name doesn't exist
+---@overload fun(Name: string): FName
+---@overload fun(ComparisonIndex: integer): FName
+---Finds or adds FName for the string or ComparisonIndex, depending on FindType (Find = 0, Add = 1)
+---@overload fun(Name: string, FindType: EFindName|integer): FName
+---@overload fun(ComparisonIndex: integer, FindType: EFindName|integer): FName
 FName = {}
 
 ---Returns the content as string

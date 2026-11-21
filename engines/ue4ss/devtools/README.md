@@ -8,7 +8,7 @@ Never ship it or make a shipped mod depend on it.
 
 ### Create game-specific mod
 
-`games/<game>/devtools/`, deployed by `dist`. Its `lux.toml` depends on `ue4ss-devtools`, `devtools` and `ue4ss` (Lux does not package transitive dependencies).
+`games/<game>/devtools/`, deployed by `dist`. Its `lux.toml` depends on `ue4ss-devtools` and on whatever its own sources require directly (e.g. `ue4ss`, the game's shared package).
 
 ```text
 games/<game>/devtools/

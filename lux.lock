@@ -1,18 +1,17 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "dependencies": {
     "rocks": {
       "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260": {
         "name": "net",
         "version": "0.1.0-1",
+        "dependencies": [
+          "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada"
+        ],
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"net\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\backends\\\\dsx\\\\../../core/net\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\backends\\dsx\\../../core/net"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-07vlrm3dWrrM8TyZCzVRx8we+y/ryymVG17EeL8vzqM=",
+          "rockspec": "sha256-1h/ibkB/ZaVFwiJAauouZrdIKHGuzPuuWL00jPlWY7w=",
           "source": "sha256-YyTDdbt7ZEMZvTLWnpIenQ7ETn1vjT6fphDaMgQ2luc="
         }
       },
@@ -34,14 +33,10 @@
         "name": "devtools",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"devtools\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\engines\\\\ue4ss\\\\devtools\\\\../../../core/devtools\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\engines\\ue4ss\\devtools\\../../../core/devtools"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-gZUq7tSra0dQRhKs+Ocms3loR7f37n91gA8JBvKnsuY=",
-          "source": "sha256-7J90h+CYdxaTG9IMaMa0RNYurkv7BvdcFv4D8jYwYwI="
+          "rockspec": "sha256-+uH8nLdOw3Sl3As+hqjE/43436leZmV/GmVeW6cad54=",
+          "source": "sha256-igXwbMUTQHe28r09G3bhs7+UI3fLgkEZEMu4blZDelU="
         }
       },
       "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada": {
@@ -62,70 +57,65 @@
       "af221ddf70e7e3dd0e6684630b123219d24ac28247432c1633ef0e1e42a141a1": {
         "name": "ue4ss-devtools",
         "version": "0.1.0-1",
+        "dependencies": [
+          "6391ec3d20ef9d5c55ab9eb9321dd02f684cb711340bb32b9913f247476dcae8",
+          "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51"
+        ],
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss-devtools\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\devtools\\\\../../../engines/ue4ss/devtools\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\devtools\\../../../engines/ue4ss/devtools"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-TgLIOpL5zuh/bloO6Onz4xPObsQkM9lOg3NF4BAaxd4=",
-          "source": "sha256-+1nzdMz9YtD9HP/t3q2D6rNAopqhFh8lbzS7vC07ktE="
+          "rockspec": "sha256-1NgEAf5wfVTi1gJUGSap/Y8g+9LQkMwzMR2Qe1tJmAc=",
+          "source": "sha256-nvt2cLlFFTpK0kYZLTFLX5f0jVhaMdj7iTqXkvUwymc="
         }
       },
       "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a": {
         "name": "hogwarts-legacy",
         "version": "0.1.0-1",
+        "dependencies": [
+          "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51"
+        ],
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"hogwarts-legacy\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\dualsense-support\\\\../shared\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\dualsense-support\\../shared"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-zpP1jxFU5THDtKssfLv9pWZ9EBMIPGWryZIR+S8aXJU=",
-          "source": "sha256-hzadQXfkpkF/MEP5gse0BtSCRa0U6e6IMqxen6yU3kQ="
+          "rockspec": "sha256-g8gs9RLqQQwkWyDPKew5eW55mPv7SLKcAl/xhaz92ug=",
+          "source": "sha256-VsFlRDTq3ewPYuGrC0BsyPkqpImFPjt+0pWapSuoZe0="
         }
       },
       "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51": {
         "name": "ue4ss",
         "version": "0.1.0-1",
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"ue4ss\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\shared\\\\../../../engines/ue4ss/helpers\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\shared\\../../../engines/ue4ss/helpers"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-REGItgAkT8DleW+56m4tJoTUfp3EpZPuziVKUW53gnM=",
-          "source": "sha256-tTm+2xubMtHa3CWPEwsJCryp8FFkTOFKz6hvAFzLA8c="
+          "rockspec": "sha256-PSFKBEmcWCTv7Pp1+EwBpWPFo/Rd080zcxMKOPjfyEQ=",
+          "source": "sha256-jU4pYsAt/DA6NINH4rHDiTpI4xrK5B/cEUonWrmgVMg="
         }
       },
       "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9": {
         "name": "backends_dsx",
         "version": "0.1.0-1",
+        "dependencies": [
+          "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
+          "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260"
+        ],
         "constraint": "==0.1.0",
-        "source": "rockspec+\nrockspec_format = \"3.0\"\npackage = \"backends_dsx\"\nversion = \"0.1.0-1\"\nsource = {\nurl = \"file:://D:/Projects\\\\game-mods\\\\games\\\\hogwarts-legacy\\\\dualsense-support\\\\../../../backends/dsx\",\n}\nbuild = {\n  type = \"source\"\n}",
-        "source_url": {
-          "type": "file",
-          "path": "D:/Projects\\game-mods\\games\\hogwarts-legacy\\dualsense-support\\../../../backends/dsx"
-        },
+        "source": "local",
         "hashes": {
-          "rockspec": "sha256-Cv6mWtGrAM4XWjfjaHVf3iIIyEtP1iJKyu1+KvlqP/A=",
-          "source": "sha256-/bMvuRgrSbMMpxPVOXjYMPYPDjQSnVGuzfhF+NPZFLw="
+          "rockspec": "sha256-yo2EJ8EJAtRiDbAM2Mw6LnxgLAePggiZV89J0tx4txM=",
+          "source": "sha256-U/rUCR0lk6zyDJ7w74n08Duj2UHi650nYyrQU5CKx5Y="
         }
       }
     },
-    "entrypoints": [
-      "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260",
-      "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
-      "6391ec3d20ef9d5c55ab9eb9321dd02f684cb711340bb32b9913f247476dcae8",
-      "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada",
-      "af221ddf70e7e3dd0e6684630b123219d24ac28247432c1633ef0e1e42a141a1",
-      "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a",
-      "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51",
-      "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9"
-    ]
+    "entrypoints": {
+      "backends_dsx": "f74756176a25343b491c53b0fc86add881940bb388aa5911b44c512f783149a9",
+      "devtools": "6391ec3d20ef9d5c55ab9eb9321dd02f684cb711340bb32b9913f247476dcae8",
+      "dkjson": "44835d446050738ccc8d81c6593f06667d66c7d8cf45e87df37a46e449534aad",
+      "hogwarts-legacy": "c305f145e72e82d2cdcbd9c70695d16714289d6038acf063700d266ed37a717a",
+      "luasocket": "7e01406c0b4fcda8171ee70086216532ed550ea3e6a68902a1975a404667bada",
+      "net": "2f4e70155e3e74a3b696052e42f2911c5b7469eb33fdcca589f437161a280260",
+      "ue4ss": "f0242c4d2bd44d79f17b4f07507da015c26cf3c10bf2d11dbbcb23ccc4beeb51",
+      "ue4ss-devtools": "af221ddf70e7e3dd0e6684630b123219d24ac28247432c1633ef0e1e42a141a1"
+    }
   },
   "test_dependencies": {
     "rocks": {
@@ -180,12 +170,13 @@
         "constraint": ">=1.15.0",
         "source": "luarocks_rockspec+https://luarocks.org/",
         "source_url": {
-          "type": "url",
-          "url": "https://luarocks.org/penlight-1.15.0-1.src.rock"
+          "type": "git",
+          "url": "https://github.com/lunarmodules/penlight.git",
+          "ref": "1.15.0"
         },
         "hashes": {
           "rockspec": "sha256-blt3sqlz+76U8RAtPtfvEqw4+VACI90TFHn+fTcQlVQ=",
-          "source": "sha256-uhOLi7yRb0Kttbh2xI0lQRT0FuiGeQL4w0/qJ4gUCXM="
+          "source": "sha256-D2GsZg3t9auFemFNMlR5Vn0I+3JIHsQFtMapgylfg7s="
         }
       },
       "455cd98d50c6191a9685cffcda4ce783efbb957934625e134c39f43bd5df6818": {
@@ -225,13 +216,6 @@
         "name": "lua_cliargs",
         "version": "3.0.2-1",
         "constraint": ">=3.0",
-        "binaries": [
-          "coverage",
-          "docs",
-          "lint",
-          "release",
-          "watch-tests.sh"
-        ],
         "source": "luarocks_rockspec+https://luarocks.org/",
         "source_url": {
           "type": "git",
@@ -285,10 +269,6 @@
           "2bd1c8e4fea66a88aeb65c1c8a3d0efdf188d681d2d47f163b976a771545aac9",
           "01a3c364614bddff7370223a5a9c4580f8e62d144384148444c518ec5367a59b"
         ],
-        "binaries": [
-          "busted",
-          "busted.bat"
-        ],
         "source": "luarocks_rockspec+https://luarocks.org/",
         "source_url": {
           "type": "git",
@@ -316,8 +296,8 @@
         }
       }
     },
-    "entrypoints": [
-      "aa700d6a934caa749d578927c97e22211ffabf97234705d63e95dc6403f6aafe"
-    ]
+    "entrypoints": {
+      "busted": "aa700d6a934caa749d578927c97e22211ffabf97234705d63e95dc6403f6aafe"
+    }
   }
 }

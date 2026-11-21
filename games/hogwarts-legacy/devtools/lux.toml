@@ -14,11 +14,6 @@ version = "0.1.0"
 path = "../shared"
 version = "0.1.0"
 
-# Transitive dependencies required by Lux dist.
-[dependencies.devtools]
-path = "../../../core/devtools"
-version = "0.1.0"
-
 [dependencies.ue4ss]
 path = "../../../engines/ue4ss/helpers"
 version = "0.1.0"

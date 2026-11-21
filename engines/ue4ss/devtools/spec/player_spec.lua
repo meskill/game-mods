@@ -4,12 +4,17 @@ local Fakes = dofile(debug.getinfo(1, "S").source:match("^@(.*[/\\])") .. "fakes
 describe("ue4ss.devtools.player", function()
 	local player, pawn
 
-	-- An object at `address` with an Owner property and an outer. GetOwner()
+	-- An actor at `address` with an Owner property and an outer. GetOwner()
 	-- fails: a hook on it would run again if the filter called it.
 	local function object(address, owner, outer)
 		return Fakes.object("Actor", "/Game/L.L:PersistentLevel.Actor_" .. address, {
 			address = address,
-			Owner = owner,
+			IsA = function(_, class)
+				return class == "/Script/Engine.Actor"
+			end,
+			GetPropertyValue = function(_, name)
+				return name == "Owner" and owner or nil
+			end,
 			GetOuter = function()
 				return outer
 			end,

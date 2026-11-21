@@ -42,6 +42,8 @@
 -- tested).
 
 local Clock = require("ue4ss.clock")
+local Reflect = require("ue4ss.devtools.reflect")
+local Player = require("hogwarts.player")
 
 local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
 local MUNITION_CLASS = "/Script/Munitions.MunitionType_Base"
@@ -317,11 +319,10 @@ end
 ---@param dev DebugApi
 local function followActiveSpell(dev)
 	dev.every(100, function()
-		local pawn = dev.pawn() --[[@as any]]
-		local spell = pawn and try(function()
-			return pawn:GetWand():GetActiveSpellTool()
-		end)
-		if type(spell) ~= "userdata" or not spell:IsValid() then
+		local player = Player.find()
+		local wand = player and Reflect.valid(player.pawn:GetWand())
+		local spell = wand and Reflect.valid(wand:GetActiveSpellTool())
+		if not spell then
 			dev.track.value("spell", "none")
 			return
 		end
@@ -347,7 +348,7 @@ local function followActiveSpell(dev)
 			dev.track.value(
 				"incendio.CurrentAOE",
 				try(function()
-					return describe(spell.CurrentAOE)
+					return describe(spell:GetPropertyValue("CurrentAOE"))
 				end)
 			)
 		end

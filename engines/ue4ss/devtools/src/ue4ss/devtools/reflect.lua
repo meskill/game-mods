@@ -35,8 +35,9 @@ function Reflect.path(object)
 end
 
 ---Valid object or nil: UE4SS returns invalid placeholders instead of nil.
----@param object any
----@return any
+---@generic T
+---@param object T
+---@return T?
 function Reflect.valid(object)
 	if object ~= nil and object:IsValid() then
 		return object

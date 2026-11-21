@@ -14,6 +14,9 @@ Player.__index = Player
 -- Owners and outers followed before giving up.
 local MAX_CHAIN = 8
 
+-- Owner is a property of actors only.
+local ACTOR_CLASS = "/Script/Engine.Actor"
+
 ---@return DebugPlayer
 function Player.new()
 	return setmetatable({ controllers = Lookup.new(1, Objects.playerController), addresses = {} }, Player)
@@ -39,24 +42,30 @@ function Player:controller()
 	return self.controllers:get() --[[@as APlayerController?]]
 end
 
+---The object's reflected Owner property when it is an actor, or nil. Reads
+---the property, not GetOwner(): calling a UFunction from a hook filter would
+---run the hooks on it again, GetOwner's included.
+---@param object UObject
+---@return UObject?
+local function owner(object)
+	if not object:IsA(ACTOR_CLASS) then
+		return nil
+	end
+	return Reflect.valid(object:GetPropertyValue("Owner"))
+end
+
 ---@param object UObject?
 ---@return boolean
 function Player:owns(object)
-	local current = object
+	local current = Reflect.valid(object)
 	for _ = 1, MAX_CHAIN do
-		if not Reflect.valid(current) then
+		if not current then
 			return false
 		end
-		---@cast current UObject
 		if self.addresses[current:GetAddress()] then
 			return true
 		end
-		-- The reflected property, not GetOwner(): calling a UFunction from a
-		-- hook filter would run the hooks on it again, GetOwner's included.
-		local ok, owner = pcall(function()
-			return Reflect.valid((current --[[@as any]]).Owner)
-		end)
-		current = (ok and owner or current:GetOuter()) --[[@as UObject?]]
+		current = owner(current) or Reflect.valid(current:GetOuter())
 	end
 	return false
 end

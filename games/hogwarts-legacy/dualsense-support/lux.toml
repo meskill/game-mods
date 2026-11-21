@@ -10,16 +10,6 @@ version = "0.1.0"
 path = "../../../backends/dsx"
 version = "0.1.0"
 
-# Transitive dependencies required by Lux dist.
-[dependencies]
-dkjson = "==2.11"
-luasocket = "==3.1.0"
-
-
-[dependencies.net]
-path = "../../../core/net"
-version = "0.1.0"
-
 [dependencies.ue4ss]
 path = "../../../engines/ue4ss/helpers"
 version = "0.1.0"
