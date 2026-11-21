@@ -1,35 +1,26 @@
--- Keeps Lumos lit once it is cast, and the wand raised while it is lit.
+-- Keeps Lumos lit once it is cast, with the wand raised.
 --
--- Casts come from the shared spell tracker (hogwarts.spells): Lumos runs
--- `SpellTool:Start` when it turns on, about 0.18 s after the press; the light
--- is on 0.05 s later. A cast is kept if the Lumos spell tool shines (see
--- shining()) DETACH_DELAY later: the keeper moves the light off the cast with
--- DeactivateLumos, CancelCurrentSpell, ActivateLumos, so other spells no longer
--- end it.
+-- About DETACH_DELAY after a cast, if the light is on, the keeper re-creates it
+-- outside the cast (DeactivateLumos, CancelCurrentSpell, ActivateLumos), so
+-- cancelling the current spell no longer puts it out.
 --
--- While the light is kept, every update forces its state, whatever changed it:
--- - the light: if it no longer shines, DeactivateLumos then ActivateLumos;
---   after MAX_RESTORES updates in a row without light the keeper gives up;
--- - the arm: the game holds the wand up for Lumos with `StartLumos` at the
---   `Lumos` arm priority; if that request is missing it is set again. Other
---   casts take the arm at higher priorities and hand it back when they end.
+-- Every update then restores the light and the wand's arm request if missing,
+-- giving up after MAX_RESTORES failed restores in a row.
 --
--- Casting Lumos at a kept light (the spell slot or a quick-cast mod such as
--- QuickUtils) runs no `Start` and no spell button press: the wand switches to
--- the Lumos tool (`WandTool:OnActiveSpellToolChanged` with it as
--- `ActivatedSpell`) and 10-20 ms later the game takes the light away. Spell
--- set previews switch to it too, but leave the light alone. So a light gone
--- within SWITCH_WINDOW of a switch to the kept Lumos tool is that cast: the
--- keeper deactivates it and clears its arm request, so the wand comes down.
--- A light gone any other way is restored.
+-- Devil's Snares follow the player's Lumos with `bPlayerIsUsingLumos`, which
+-- the game's PlayerLumosStart/PlayerLumosEnd set: Start at the Lumos cast, End
+-- when the next spell's cast begins, even though the keeper keeps the light.
+-- So every update starts the snares' Lumos where it is off, and releasing the
+-- light ends it.
 --
--- On a mount the game has no Lumos: update() puts a kept light out and clears
--- its arm request, and ignores casts there; the next cast on foot is kept.
+-- Casting Lumos at a kept light switches the wand to the Lumos tool and the
+-- game removes the light 10-20 ms later. A light lost within SWITCH_WINDOW of
+-- such a switch turns the keeper off; any other loss is restored.
 --
--- A failing game call (objects going away while loading) and a new player
--- (after loading) make the keeper forget the light without calling the game.
+-- On a mount the light is released and casts are ignored. A failing game call
+-- or a new player makes the keeper forget the light.
 --
--- Hooks only record casts and switches; every game call runs from update().
+-- Hooks only record events; every game call runs from update().
 
 ---@alias LumosState
 ---| "off" # Nothing kept; waiting for a Lumos cast.
@@ -38,34 +29,31 @@
 
 local LUMOS_CLASS = "/Script/Phoenix.LumosSpellTool"
 
--- EStandardManagedPriority.AblAbility, the priority LumosAlwaysStayOn used.
+-- EStandardManagedPriority.AblAbility.
 local LIGHT_PRIORITY = 1
 
--- ERightArmPriority.Lumos: the slot of the arm request the game sets for Lumos.
+-- ERightArmPriority.Lumos.
 local ARM_PRIORITY = 8
--- ERightArmState.StartLumos, the wand held up as the game does for Lumos, and
--- ERightArmState.None, no request.
+-- ERightArmState.StartLumos (wand up for Lumos) and None.
 local ARM_LUMOS = 14
 local ARM_NONE = 0
 
--- Seconds a lit cast stays on the wand before the light is moved: the cast
--- animation finishes first (LumosAlwaysStayOn waited 0.55 s after the press).
+-- Seconds to wait after a cast before detaching: lets the light come on and
+-- the cast animation finish.
 local DETACH_DELAY = 0.5
 
 -- Seconds a cast may take to light before it counts as failed.
 local CAST_TIMEOUT = 2
 
--- Updates in a row the light may stay out despite being restored before the
--- keeper gives up on it.
+-- Failed restores in a row before the keeper gives up.
 local MAX_RESTORES = 5
 
--- Seconds after a switch to the kept Lumos tool in which the light going out
--- counts as Lumos cast again (the game takes it 10-20 ms after the switch;
--- updates run every 200 ms).
+-- Seconds after a switch to the kept Lumos tool in which losing the light
+-- counts as Lumos cast again.
 local SWITCH_WINDOW = 0.5
 
----Whether the Lumos spell tool's light is on: active, with its light actor.
----Casting Lumos at a kept light removes the actor but leaves it active.
+---Whether the light is on: active and with its light actor (casting Lumos at
+---a kept light removes the actor but leaves it active).
 ---@param lumos ALumosSpellTool
 ---@return boolean
 local function shining(lumos)
@@ -80,6 +68,7 @@ end
 ---@class LumosKeeper
 ---@field private warn fun(message: string) Receives game calls that failed.
 ---@field private now fun(): number Seconds from a clock that never goes backwards.
+---@field private snares fun(): LumosSnare[] The loaded Devil's Snares.
 ---@field private state LumosState
 ---@field private since number The time the state was entered.
 ---@field private lumos? ALumosSpellTool The Lumos spell tool of the cast being kept.
@@ -94,11 +83,13 @@ local Lumos = {}
 
 ---@param warn fun(message: string) Receives game calls that failed.
 ---@param now fun(): number Seconds from a clock that never goes backwards.
+---@param snares fun(): LumosSnare[] The loaded Devil's Snares (see snares.lua).
 ---@return LumosKeeper
-function Lumos.keeper(warn, now)
+function Lumos.keeper(warn, now, snares)
 	return setmetatable({
 		warn = warn,
 		now = now,
+		snares = snares,
 		state = "off",
 		since = 0,
 		switchedAt = -math.huge,
@@ -117,8 +108,7 @@ function Keeper:fired(cast)
 	end
 end
 
----Records a wand switching to a spell tool (`WandTool:OnActiveSpellToolChanged`),
----any character's; only a switch to the Lumos tool being kept counts.
+---Records a wand switching to a spell tool; only the kept Lumos tool counts.
 ---@param tool integer The activated spell tool's address.
 function Keeper:switched(tool)
 	local lumos = self.lumos
@@ -134,13 +124,28 @@ function Keeper:enter(state, now)
 	self.state, self.since = state, now
 end
 
----Forgets the light and anything recorded without calling the game: its
----objects are gone or failing, e.g. a new player after loading.
+---Forgets the light without calling the game (objects gone or failing).
 function Keeper:forget()
 	self.state, self.lumos, self.cast, self.switchedAt, self.raised = "off", nil, nil, -math.huge, false
 end
 
----Puts the kept light out and clears the arm request.
+---Starts (true) or ends (false) the player's Lumos for the snares not in that
+---state, as the game does at a Lumos cast and at the next spell.
+---@private
+---@param using boolean
+function Keeper:tellSnares(using)
+	for _, snare in ipairs(self.snares()) do
+		if snare.bPlayerIsUsingLumos ~= using then
+			if using then
+				snare:PlayerLumosStart()
+			else
+				snare:PlayerLumosEnd()
+			end
+		end
+	end
+end
+
+---Puts the kept light out, clears the arm request and ends the snares' Lumos.
 ---@private
 ---@param pawn ABiped_Player
 ---@param now number
@@ -150,11 +155,13 @@ function Keeper:release(pawn, now)
 	if self.raised then
 		pawn:SetRightArmState(ARM_NONE, ARM_PRIORITY, true)
 	end
+	self:tellSnares(false)
 	self.lumos, self.raised = nil, false
 	self:enter("off", now)
 end
 
----Forces the kept light on and the wand up, unless Lumos was cast at it.
+---Forces the kept light on, the wand up and the snares' Lumos started, unless
+---Lumos was cast at the light.
 ---@private
 ---@param pawn ABiped_Player
 ---@param now number
@@ -182,6 +189,7 @@ function Keeper:force(pawn, now)
 		pawn:SetRightArmState(ARM_LUMOS, ARM_PRIORITY, true)
 		self.raised = true
 	end
+	self:tellSnares(true)
 end
 
 ---@private
@@ -238,10 +246,9 @@ function Keeper:step(pawn, now)
 	end
 end
 
----Acts on what was recorded and forces a kept light. Call on the game thread
----every 200 ms while the player is in gameplay, also on a mount, where it lets
----go of the light. A failing game call is reported and makes the keeper
----forget the light.
+---Acts on recorded events and keeps the light. Call on the game thread every
+---200 ms during gameplay, mounts included. A failing game call is reported
+---and the light forgotten.
 ---@param pawn ABiped_Player
 function Keeper:update(pawn)
 	-- One reading for the whole update.

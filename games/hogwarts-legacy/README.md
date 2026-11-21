@@ -146,6 +146,22 @@ QuickUtils (a Blueprint quick-cast mod) casts Lumos with
 `WandTool:CastActiveSpell`, and presses no spell button: `OnSpell_Pressed`
 does not run for it. The `quick-cast` mod casts the same way.
 
+##### Devil's Snare
+
+Snares (`DevilsSnare`, `DevilsSnareDynamic`; Blueprints such as
+`BP_DevilsSnareDyn_Wall_C`) recoil from the player's Lumos while their
+`bPlayerIsUsingLumos` is true. The game calls their `PlayerLumosStart` when
+Lumos is cast (~20 ms after `Start`) and `PlayerLumosEnd` when it goes out,
+and also when the next spell's cast begins (~0.4 s before its `Start`),
+even if the light is kept on. After that one `PlayerLumosEnd`, further spells
+call neither. Restoring the light (`DeactivateLumos`, `ActivateLumos`) calls
+neither. Writing `bPlayerIsUsingLumos = true` or calling `PlayerLumosStart`
+makes the snares recoil again, and the flag stays true through other casts
+(devtools `experiments/snare.lua`, run 2, `DevilsSnareDynamic` only).
+`FindAllOf("DevilsSnareDynamic")` lists the Blueprint snares.
+`DevilsSnareDynamic:FindClosestLightSourcePos` runs about every 10 ms per
+snare: skip it when hooking the class.
+
 #### Quick casts
 
 A spell can be cast without a spell button or a spell set slot, as

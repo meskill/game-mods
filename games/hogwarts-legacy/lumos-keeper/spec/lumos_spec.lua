@@ -83,16 +83,35 @@ local function scene()
 		end
 	end
 
+	-- Devil's Snares: PlayerLumosStart/End set their flag as the game's do.
+	s.snares = {}
+	---@param name string
+	function s.snare(name)
+		local snare = { bPlayerIsUsingLumos = false }
+		function snare:PlayerLumosStart()
+			calls[#calls + 1] = "start " .. name
+			self.bPlayerIsUsingLumos = true
+		end
+		function snare:PlayerLumosEnd()
+			calls[#calls + 1] = "end " .. name
+			self.bPlayerIsUsingLumos = false
+		end
+		s.snares[#s.snares + 1] = snare
+		return snare
+	end
+
 	s.lumos, s.other, s.wand, s.pawn = lumos, other, wand, pawn
 	return s
 end
 
 local function quiet() end
 
----A keeper on the scene's clock, `s.time`.
+---A keeper on the scene's clock, `s.time`, and with the scene's snares.
 local function newKeeper(s)
 	return Lumos.keeper(quiet, function()
 		return s.time
+	end, function()
+		return s.snares
 	end)
 end
 
@@ -306,5 +325,52 @@ describe("lumos", function()
 		s.mounted = false
 		update(s, keeper, 0.8)
 		assert.same({}, s.calls)
+	end)
+
+	it("starts the snares' Lumos the game ended while the light is kept", function()
+		local s = scene()
+		local keeper = kept(s)
+		-- The game started it at the cast for one snare; another loaded later.
+		s.snare("cast").bPlayerIsUsingLumos = true
+		s.snare("loaded")
+		update(s, keeper, 1)
+		assert.same({ "start loaded" }, s.calls)
+
+		-- Another spell's cast begins: the game ends it for every snare.
+		clear(s)
+		for _, snare in ipairs(s.snares) do
+			snare:PlayerLumosEnd()
+		end
+		clear(s)
+		update(s, keeper, 1.2)
+		assert.same({ "start cast", "start loaded" }, s.calls)
+
+		clear(s)
+		update(s, keeper, 1.4)
+		assert.same({}, s.calls)
+	end)
+
+	it("ends the snares' Lumos when it lets go of the light", function()
+		local s = scene()
+		local keeper = kept(s)
+		s.snare("near")
+		update(s, keeper, 1)
+		clear(s)
+		s.mounted = true
+		update(s, keeper, 1.2)
+		assert.same({ "deactivate", "arm 0@8 true", "end near" }, s.calls)
+	end)
+
+	it("leaves the snares alone when Lumos cast at the light already ended their Lumos", function()
+		local s = scene()
+		local keeper = kept(s)
+		local snare = s.snare("near")
+		update(s, keeper, 1)
+		clear(s)
+		-- The game ends the snares' Lumos with the light.
+		switched(s, keeper, s.lumos:GetAddress(), 1.1)
+		s.lumos.shining, snare.bPlayerIsUsingLumos = false, false
+		update(s, keeper, 1.2)
+		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
 	end)
 end)

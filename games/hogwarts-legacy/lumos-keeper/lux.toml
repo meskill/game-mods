@@ -16,6 +16,7 @@ type = "builtin"
 [build.modules]
 main = "src/Scripts/main.lua"
 lumos = "src/Scripts/lumos.lua"
+snares = "src/Scripts/snares.lua"
 
 [test]
 type = "busted"

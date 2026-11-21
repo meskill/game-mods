@@ -8,8 +8,8 @@
 --   F5  release: DeactivateLumos, CancelCurrentSpell
 -- Keys act on the Lumos tool of the last Lumos cast and screenshot 300 ms later.
 --
--- Run, out of combat, with LumosAlwaysStayOn off and lumos-keeper off to see
--- the game alone (on, to see the mod): start tracking; mark before each step.
+-- Run, out of combat, with lumos-keeper off to see the game alone (on, to see
+-- the mod): start tracking; mark before each step.
 -- 1. Cast Lumos; wait 2 s; cast Lumos again; wait 2 s.
 -- 2. Cast Lumos; wait 1 s; F1; F2; wait 2 s; cast Confringo; wait 2 s.
 -- 3. Cast Lumos (light should go); wait 2 s; F3. Stop tracking.
