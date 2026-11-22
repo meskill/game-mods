@@ -1,55 +1,89 @@
--- Button combos: hold a modifier, press a button.
+-- Button combos: hold a device's modifier, press one of its buttons.
 --
--- A button counts when it goes down while the modifier is held, once per
--- press. A button already down when the modifier goes down, or going down in
--- the same poll, does not: the game took that press before the mod could
--- block it.
+-- One modifier holds at a time. The one that goes down while none holds owns
+-- the hold until it goes up; only its device's buttons count meanwhile.
+-- Another modifier pressed during the hold is a plain key, for the game, and
+-- stays one until it is pressed again. Two pressed in the same poll: the first
+-- device given owns the hold.
+--
+-- A button counts when it goes down during the hold, once per press. A button
+-- already down when the hold starts, or going down in the same poll, does
+-- not: the game took that press before the mod could block it.
+
+---The keys of one device, as Unreal FKey names.
+---@class QuickCastComboDevice
+---@field modifier string The key to hold.
+---@field buttons string[] The keys pressed with it, by slot.
 
 ---@class QuickCastCombos
----@field private modifier string
----@field private buttons string[]
+---@field private devices QuickCastComboDevice[]
+---@field private owner? integer The device whose modifier holds.
 local Combos = {}
 Combos.__index = Combos
 
 local M = {}
 
----@param modifier string The FKey name of the button to hold.
----@param buttons string[] The FKey names of the buttons pressed with it, e.g. "Gamepad_FaceButton_Top".
+---@param devices QuickCastComboDevice[] By priority.
 ---@return QuickCastCombos
-function M.new(modifier, buttons)
-	return setmetatable({ modifier = modifier, buttons = buttons }, Combos)
+function M.new(devices)
+	return setmetatable({ devices = devices }, Combos)
 end
 
----The keys update() reads, for the tracker: the modifier, then the buttons.
+---The keys update() reads, for the tracker: each device's modifier, then its
+---buttons, each key once (devices may share buttons; the tracker reads a key
+---listed twice as never pressed).
 ---@return string[]
 function Combos:keys()
-	local names = { self.modifier }
-	for _, button in ipairs(self.buttons) do
-		names[#names + 1] = button
+	local names, seen = {}, {}
+	for _, device in ipairs(self.devices) do
+		for _, name in ipairs({ device.modifier, table.unpack(device.buttons) }) do
+			if not seen[name] then
+				seen[name] = true
+				names[#names + 1] = name
+			end
+		end
 	end
 	return names
 end
 
 ---Reads the combos from the tracker's last update.
 ---@param keys HogwartsKeyTracker Tracks keys().
----@return boolean held Whether the modifier is held.
----@return string[]? pressed The buttons pressed with the modifier, in the order given to new().
+---@return integer? owner The device whose modifier holds, nil for none.
+---@return boolean started Whether its hold began at this update.
+---@return integer[]? pressed The slots of the owner's buttons pressed, in order.
 function Combos:update(keys)
-	if not keys:isDown(self.modifier) then
-		return false, nil
+	local owner = self.owner
+	local holding = owner and self.devices[owner]
+	if holding and not keys:isDown(holding.modifier) then
+		owner, holding = nil, nil
 	end
-	if keys:pressed(self.modifier) then
-		return true, nil
-	end
-	---@type string[]?
-	local pressed
-	for _, button in ipairs(self.buttons) do
-		if keys:pressed(button) then
-			pressed = pressed or {}
-			pressed[#pressed + 1] = button
+	local started = false
+	if not owner then
+		for index, device in ipairs(self.devices) do
+			if keys:pressed(device.modifier) then
+				owner, holding, started = index, device, true
+				break
+			end
 		end
 	end
-	return true, pressed
+	self.owner = owner
+	if not holding or started then
+		return owner, started, nil
+	end
+	---@type integer[]?
+	local pressed
+	for slot, button in ipairs(holding.buttons) do
+		if keys:pressed(button) then
+			pressed = pressed or {}
+			pressed[#pressed + 1] = slot
+		end
+	end
+	return owner, started, pressed
+end
+
+---Ends the hold, e.g. when the player leaves gameplay.
+function Combos:reset()
+	self.owner = nil
 end
 
 return M

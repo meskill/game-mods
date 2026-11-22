@@ -268,6 +268,8 @@ blocker:reset() -- restores; the next block reads the mappings again
 
 -- the same for actions, on whatever keys they are mapped to
 local panel = Input.actionBlocker({ "UMGCreatureManagementScreen" })
+-- or only their mappings on some keys: the action's other keys keep working
+local onRB = Input.actionBlocker({ "UMGCreatureManagementScreen" }, { "Gamepad_RightShoulder" })
 
 -- a key event the game takes as the player's: its mappings act on it
 Input.simulate(controller, "Gamepad_RightShoulder", Input.Event.PRESSED)

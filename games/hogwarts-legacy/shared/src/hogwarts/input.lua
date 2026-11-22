@@ -1,10 +1,10 @@
--- Gamepad keys read from the player controller, tracked between polls, the
--- game's action mappings taken off keys or actions while a mod uses them, and
--- key events sent to the game as if the player made them.
+-- Gamepad, keyboard and mouse keys read from the player controller, tracked
+-- between polls, the game's action mappings taken off keys or actions while a
+-- mod uses them, and key events sent to the game as if the player made them.
 --
--- Key names are Unreal's FKey names, e.g. "Gamepad_RightShoulder" or
--- "Gamepad_DPad_Up". A Lua mod cannot consume input: the game sees every
--- press. The game binds its gamepad actions (Revelio, heal, the compass, spell
+-- Key names are Unreal's FKey names, e.g. "Gamepad_RightShoulder", "One" or
+-- "ThumbMouseButton". A Lua mod cannot consume input: the game sees every
+-- press. The game binds its actions (Revelio, heal, the compass, spell
 -- sets, menus) as action mappings in the engine's input settings, so a blocker
 -- removes the mappings on its keys and puts them back; key states, read with
 -- isDown() or a tracker, do not depend on them.
@@ -197,20 +197,28 @@ end
 ---@class HogwartsInputBlocker
 ---@field private names table<string, boolean?> Key or action names.
 ---@field private field "key"|"action" What the names are.
+---@field private keys? table<string, boolean?> For actions: only their mappings on these keys.
 ---@field private found? HogwartsInputMapping[] The mappings blocked, read at the first block.
 ---@field private blocked boolean
 local Blocker = {}
 Blocker.__index = Blocker
 
----@param names string[]
----@param field "key"|"action"
----@return HogwartsInputBlocker
-local function newBlocker(names, field)
+---@param list string[]
+---@return table<string, boolean?>
+local function lookup(list)
 	local set = {}
-	for _, name in ipairs(names) do
+	for _, name in ipairs(list) do
 		set[name] = true
 	end
-	return setmetatable({ names = set, field = field, blocked = false }, Blocker)
+	return set
+end
+
+---@param names string[]
+---@param field "key"|"action"
+---@param onKeys? string[]
+---@return HogwartsInputBlocker
+local function newBlocker(names, field, onKeys)
+	return setmetatable({ names = lookup(names), field = field, keys = onKeys and lookup(onKeys), blocked = false }, Blocker)
 end
 
 ---@param names string[] Key names whose action mappings to take.
@@ -219,10 +227,11 @@ function Input.blocker(names)
 	return newBlocker(names, "key")
 end
 
----@param actions string[] Action names whose mappings to take, on every key, e.g. "UMGCreatureManagementScreen".
+---@param actions string[] Action names whose mappings to take, e.g. "UMGCreatureManagementScreen".
+---@param onKeys? string[] Take only their mappings on these keys; on every key without.
 ---@return HogwartsInputBlocker
-function Input.actionBlocker(actions)
-	return newBlocker(actions, "action")
+function Input.actionBlocker(actions, onKeys)
+	return newBlocker(actions, "action", onKeys)
 end
 
 ---@private
@@ -234,8 +243,9 @@ function Blocker:scan(settings)
 	-- By index: TArray:ForEach failed in UE4SS 3.0.1 (see ue4ss devtools format.lua).
 	for i = 1, mappings:GetArrayNum() do
 		local mapping = mappings[i]
-		local name = self.field == "key" and mapping.Key.KeyName or mapping.ActionName
-		if self.names[text(name)] then
+		local keyName = text(mapping.Key.KeyName)
+		local name = self.field == "key" and keyName or text(mapping.ActionName)
+		if self.names[name] and (not self.keys or self.keys[keyName]) then
 			found[#found + 1] = copy(mapping)
 		end
 	end

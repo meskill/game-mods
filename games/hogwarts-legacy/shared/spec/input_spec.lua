@@ -40,6 +40,7 @@ describe("hogwarts.input", function()
 			mapping("CM_GamePad_DpadDown", "Gamepad_DPad_Down"),
 			mapping("Jump", "Gamepad_FaceButton_Bottom"),
 			mapping("AM_Loadout1", "Gamepad_DPad_Up"),
+			mapping("AM_Loadout1", "Five"),
 		}
 		function mappings:GetArrayNum()
 			return #self
@@ -98,11 +99,19 @@ describe("hogwarts.input", function()
 		assert.same({
 			"remove Jump Gamepad_FaceButton_Bottom",
 			"remove AM_Loadout1 Gamepad_DPad_Up",
+			"remove AM_Loadout1 Five",
 			"rebuild",
 			"add Jump Gamepad_FaceButton_Bottom",
 			"add AM_Loadout1 Gamepad_DPad_Up",
+			"add AM_Loadout1 Five",
 			"rebuild",
 		}, calls)
+	end)
+
+	it("takes the blocked actions off the given keys only", function()
+		local blocker = Input.actionBlocker({ "AM_Loadout1" }, { "Gamepad_DPad_Up" })
+		blocker:block()
+		assert.same({ "remove AM_Loadout1 Gamepad_DPad_Up", "rebuild" }, calls)
 	end)
 
 	it("removes once while blocked and restores only after a block", function()
