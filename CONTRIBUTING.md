@@ -4,7 +4,7 @@
 
 1. Install [lux](https://lux.lumen-labs.org) on windows from release page.
 
-> lux-cli 0.44.0 was used last time.
+> lux-cli 0.55.2 was used last time.
 
 2. _Windows_: Install Windows Build Tools with proper additional tooling.
 

@@ -15,6 +15,7 @@ The dependencies are managed by `lux` tool.
 - Declare only the dependencies a package requires directly; `lx dist flat-archive` packages transitive dependencies, local ones included.
 - Read the root `lux.toml` and the affected package's `lux.toml` before choosing commands or changing dependencies. Use the manifest's `package` value for package selectors, not its directory name
 - in case of uncertainty consult the official [doc](https://lux.lumen-labs.org/) and `--help` flag for lux commands.
+- Keep the documented lux version current: when `lx --version` differs from the version in `CONTRIBUTING.md` ("lux-cli X was used last time"), run `lx check` and `lx test` from the repo root; once they pass, set that line and the `Troubleshooting (lux X)` heading below to the new version, and re-verify or drop the troubleshooting entries.
 
 ## Code
 
