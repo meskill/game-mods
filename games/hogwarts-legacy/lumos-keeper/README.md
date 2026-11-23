@@ -12,7 +12,7 @@ The Lumos spell won't be disabled anymore after any action that turns it off in 
 ```mermaid
 stateDiagram-v2
   off --> casting: Lumos cast
-  casting --> kept: lit after 0.5 s, light detached from the cast
+  casting --> kept: lit, light moved off the cast, wand held up
   casting --> off: not lit within 2 s, or on a mount
   kept --> kept: every 200 ms, light, wand and Devil's Snares countered
   kept --> off: Lumos cast again, light lost, on a mount, or game objects gone

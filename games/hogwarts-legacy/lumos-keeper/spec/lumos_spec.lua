@@ -1,19 +1,21 @@
 local Lumos = require("lumos")
 
--- ERightArmState.StartLumos at ERightArmPriority.Lumos, as the game requests it.
+-- ERightArmState.StartLumos and None at ERightArmPriority.Lumos, the request
+-- the game and the keeper share.
 local ARM = "arm 14@8 true"
-local MOVE = { "deactivate", "cancel", "activate" }
+local LOWER = "arm 0@8 true"
+-- Held up at FullBodyUnderLumos over the cancel, which clears the Lumos request.
+local KEEP = { "arm 14@7 true", "deactivate", "cancel", "activate", ARM, "arm 0@7 true" }
 local RESTORE = { "deactivate", "activate" }
-local WAND = 0x20
 
 local function valid()
 	return true
 end
 
----A player whose wand holds a Lumos spell tool. Game calls the keeper makes are
----recorded in `calls` and change the scene the way the game did in the
----experiment: `request` is the arm state requested at the Lumos priority,
----`mounted` whether the player is on a mount, `time` the keeper's clock.
+---A player with a Lumos spell tool. Game calls the keeper makes are recorded
+---in `calls` and change the scene the way the game did in the experiment:
+---`request` is the arm state requested at the Lumos priority, `mounted`
+---whether the player is on a mount, `time` the keeper's clock.
 local function scene()
 	local calls = {}
 	local s = { calls = calls, request = 0, failing = false, mounted = false, time = 0 }
@@ -53,23 +55,7 @@ local function scene()
 		return false
 	end
 
-	local wand = { IsValid = valid, active = lumos }
-	function wand:GetAddress()
-		return WAND
-	end
-	function wand:GetActiveSpellTool()
-		return self.active
-	end
-	function wand:CancelCurrentSpell()
-		calls[#calls + 1] = "cancel"
-		-- Cancelling the Lumos cast clears its arm request.
-		s.request = 0
-	end
-
 	local pawn = {}
-	function pawn:GetWand()
-		return wand
-	end
 	function pawn:GetRightArmState(priority)
 		return priority == 8 and s.request or 0
 	end
@@ -104,7 +90,17 @@ local function scene()
 		return snare
 	end
 
-	s.lumos, s.other, s.wand, s.pawn = lumos, other, wand, pawn
+	local wand = { IsValid = valid }
+	function wand:CancelCurrentSpell()
+		calls[#calls + 1] = "cancel"
+		-- Cancelling the Lumos cast clears its arm request.
+		s.request = 0
+	end
+	function pawn:GetWand()
+		return wand
+	end
+
+	s.lumos, s.other, s.pawn = lumos, other, pawn
 	return s
 end
 
@@ -135,11 +131,11 @@ local function switched(s, keeper, tool, time)
 	keeper:switched(tool)
 end
 
----The player casts Lumos: the tracker reports it, the wand lights it and holds
+---The player casts Lumos: the tracker reports it, the game lights it and holds
 ---the arm up.
 local function cast(s, keeper)
 	keeper:fired({ name = "lumos", spell = s.lumos })
-	s.lumos.lit, s.lumos.shining, s.request, s.wand.active = true, true, 14, s.lumos
+	s.lumos.lit, s.lumos.shining, s.request = true, true, 14
 end
 
 local function clear(s)
@@ -161,28 +157,29 @@ local function calls(...)
 	return all
 end
 
----A keeper that kept a Lumos cast at 0.2 s from 0.8 s, with the wand raised.
+---A keeper that kept a Lumos cast at 0.2 s from 0.8 s; the game's arm request
+---holds the wand up.
 local function kept(s)
 	local keeper = newKeeper(s)
 	cast(s, keeper)
 	update(s, keeper, 0.2)
 	update(s, keeper, 0.8)
-	assert.same(calls(MOVE, ARM), s.calls)
+	assert.same(KEEP, s.calls)
 	clear(s)
 	return keeper
 end
 
 describe("lumos", function()
-	it("moves a lit cast off the wand and raises it once the cast animation is done", function()
+	it("moves a cast's light off the cast at the first update where it is lit", function()
 		local s = scene()
 		local keeper = newKeeper(s)
-		cast(s, keeper)
+		keeper:fired({ name = "lumos", spell = s.lumos })
 		update(s, keeper, 0.2)
-		update(s, keeper, 0.6)
 		assert.same({}, s.calls)
 
-		update(s, keeper, 0.8)
-		assert.same(calls(MOVE, ARM), s.calls)
+		s.lumos.lit, s.lumos.shining, s.request = true, true, 14
+		update(s, keeper, 0.4)
+		assert.same(KEEP, s.calls)
 	end)
 
 	it("leaves a cast that does not light to the game", function()
@@ -197,7 +194,7 @@ describe("lumos", function()
 		cast(s, keeper)
 		update(s, keeper, 3)
 		update(s, keeper, 3.6)
-		assert.same(calls(MOVE, ARM), s.calls)
+		assert.same(KEEP, s.calls)
 	end)
 
 	it("ignores other spells' casts", function()
@@ -235,7 +232,7 @@ describe("lumos", function()
 		end
 		clear(s)
 		update(s, keeper, 2.2)
-		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
+		assert.same({ "deactivate", LOWER }, s.calls)
 
 		clear(s)
 		update(s, keeper, 2.4)
@@ -249,7 +246,7 @@ describe("lumos", function()
 		switched(s, keeper, s.lumos:GetAddress(), 0.95)
 		s.lumos.shining = false
 		update(s, keeper, 1)
-		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
+		assert.same({ "deactivate", LOWER }, s.calls)
 
 		-- Off: the arm and light are left to the game; a new cast is kept again.
 		clear(s)
@@ -259,7 +256,7 @@ describe("lumos", function()
 		cast(s, keeper)
 		update(s, keeper, 1.4)
 		update(s, keeper, 2)
-		assert.same(calls(MOVE, ARM), s.calls)
+		assert.same(KEEP, s.calls)
 	end)
 
 	it("keeps the light through a switch to Lumos that leaves it on", function()
@@ -306,7 +303,7 @@ describe("lumos", function()
 		local keeper = kept(s)
 		s.mounted = true
 		update(s, keeper, 1)
-		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
+		assert.same({ "deactivate", LOWER }, s.calls)
 
 		-- Riding: Lumos cast on the mount is not kept.
 		clear(s)
@@ -320,7 +317,7 @@ describe("lumos", function()
 		cast(s, keeper)
 		update(s, keeper, 2.2)
 		update(s, keeper, 2.8)
-		assert.same(calls(MOVE, ARM), s.calls)
+		assert.same(KEEP, s.calls)
 	end)
 
 	it("drops a cast being watched on a mount without calling the game", function()
@@ -368,7 +365,7 @@ describe("lumos", function()
 		clear(s)
 		s.mounted = true
 		update(s, keeper, 1.2)
-		assert.same({ "deactivate", "arm 0@8 true", "end a" }, s.calls)
+		assert.same({ "deactivate", LOWER, "end a" }, s.calls)
 	end)
 
 	it("leaves the snares alone when Lumos cast at the light ends their Lumos", function()
@@ -382,7 +379,7 @@ describe("lumos", function()
 		s.lumos.shining = false
 		gameEnds(keeper, a)
 		update(s, keeper, 1.2)
-		assert.same({ "deactivate", "arm 0@8 true" }, s.calls)
+		assert.same({ "deactivate", LOWER }, s.calls)
 	end)
 
 	it("skips a snare that is gone and keeps the light", function()

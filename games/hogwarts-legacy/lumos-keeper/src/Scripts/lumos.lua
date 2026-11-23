@@ -1,10 +1,13 @@
 -- Keeps Lumos lit once it is cast, with the wand raised.
 --
--- About DETACH_DELAY after a cast, if the light is on, the keeper re-creates it
+-- At the first update where a cast's light is on, the keeper re-creates it
 -- outside the cast (DeactivateLumos, CancelCurrentSpell, ActivateLumos), so
--- cancelling the current spell no longer puts it out.
+-- cancelling the current spell no longer puts it out. ActivateLumos while the
+-- cast's light is still on, without DeactivateLumos, blocks other casts. The
+-- cancel clears the Lumos arm request, so the wand is held up at HOLD_PRIORITY
+-- over the cancel and the Lumos request set again before the hold is cleared.
 --
--- Every update then restores the light and the wand's arm request if missing,
+-- Every update then restores the light and the Lumos arm request if missing,
 -- giving up after MAX_RESTORES failed restores in a row.
 --
 -- Devil's Snares follow the player's Lumos with `bPlayerIsUsingLumos`, which
@@ -35,15 +38,14 @@ local LUMOS_CLASS = "/Script/Phoenix.LumosSpellTool"
 -- EStandardManagedPriority.AblAbility.
 local LIGHT_PRIORITY = 1
 
--- ERightArmPriority.Lumos.
+-- ERightArmPriority.Lumos, the request the game sets for Lumos.
 local ARM_PRIORITY = 8
+-- ERightArmPriority.FullBodyUnderLumos: holds the wand up during the cancel
+-- only; the hold is cleared in the same update.
+local HOLD_PRIORITY = 7
 -- ERightArmState.StartLumos (wand up for Lumos) and None.
 local ARM_LUMOS = 14
 local ARM_NONE = 0
-
--- Seconds to wait after a cast before detaching: lets the light come on and
--- the cast animation finish.
-local DETACH_DELAY = 0.5
 
 -- Seconds a cast may take to light before it counts as failed.
 local CAST_TIMEOUT = 2
@@ -90,7 +92,6 @@ end
 ---@field private cast? ALumosSpellTool A Lumos cast reported since the last update.
 ---@field private switchedAt number Time of the last switch to the kept Lumos tool.
 ---@field private restores integer Updates in a row that restored the light.
----@field private raised boolean The keeper set its arm request.
 local Keeper = {}
 Keeper.__index = Keeper
 
@@ -109,7 +110,6 @@ function Lumos.keeper(warn, now)
 		since = 0,
 		switchedAt = -math.huge,
 		restores = 0,
-		raised = false,
 	}, Keeper)
 end
 
@@ -159,7 +159,7 @@ end
 
 ---Forgets the light without calling the game (objects gone or failing).
 function Keeper:forget()
-	self.state, self.lumos, self.cast, self.switchedAt, self.raised = "off", nil, nil, -math.huge, false
+	self.state, self.lumos, self.cast, self.switchedAt = "off", nil, nil, -math.huge
 	self.ended, self.started = {}, {}
 end
 
@@ -190,11 +190,9 @@ end
 function Keeper:release(pawn, now)
 	local lumos = self.lumos --[[@as ALumosSpellTool]]
 	lumos:DeactivateLumos(LIGHT_PRIORITY, lumos)
-	if self.raised then
-		pawn:SetRightArmState(ARM_NONE, ARM_PRIORITY, true)
-	end
+	pawn:SetRightArmState(ARM_NONE, ARM_PRIORITY, true)
 	self:endSnares()
-	self.lumos, self.raised = nil, false
+	self.lumos = nil
 	self:enter("off", now)
 end
 
@@ -225,7 +223,6 @@ function Keeper:force(pawn, now)
 
 	if pawn:GetRightArmState(ARM_PRIORITY) ~= ARM_LUMOS then
 		pawn:SetRightArmState(ARM_LUMOS, ARM_PRIORITY, true)
-		self.raised = true
 	end
 	self:startSnares()
 end
@@ -268,13 +265,13 @@ function Keeper:step(pawn, now)
 		return
 	end
 
-	if now < self.since + DETACH_DELAY then
-		return
-	end
 	if shining(lumos) then
+		pawn:SetRightArmState(ARM_LUMOS, HOLD_PRIORITY, true)
 		lumos:DeactivateLumos(LIGHT_PRIORITY, lumos)
 		wand:CancelCurrentSpell()
 		lumos:ActivateLumos(LIGHT_PRIORITY, lumos)
+		pawn:SetRightArmState(ARM_LUMOS, ARM_PRIORITY, true)
+		pawn:SetRightArmState(ARM_NONE, HOLD_PRIORITY, true)
 		self.restores = 0
 		self:enter("kept", now)
 		self:force(pawn, now)
