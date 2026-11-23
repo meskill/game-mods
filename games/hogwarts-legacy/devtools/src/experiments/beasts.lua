@@ -8,6 +8,7 @@
 --   require("experiments.beasts")(dev, { run = "release" })  -- run 11
 --   require("experiments.beasts")(dev, { run = "range" })    -- run 12
 --   require("experiments.beasts")(dev, { run = "repeat" })   -- run 13
+--   require("experiments.beasts")(dev, { run = "reach" })    -- run 14
 -- All log the Nab-Sack's and the inventory tools' calls and poll combat,
 -- the auto target and the catch. "capture" uses the Nab-Sack without the
 -- spell set (F1, F2, below the run 4 findings); "slots" writes the set's
@@ -15,7 +16,8 @@
 -- item with the game's slot press (F1-F3, run 10 below); "release" ends the
 -- mod's use as the button's release does (F1, F2, run 11 below); "range"
 -- polls the focused beast's distance (no keys, run 12 below); "repeat"
--- feeds twice in a row, which leaves the player walking (F1, F2, run 13).
+-- feeds twice in a row, which leaves the player walking (F1, F2, run 13);
+-- "reach" reads the tools' own ranges (F1-F4, run 14 below).
 --
 -- Findings, run 1 (one catch of a Giant Purple Toad, a fight with spiders):
 -- - The Nab-Sack is no spell but an inventory item tool: record
@@ -254,6 +256,53 @@
 -- 2. Focus a beast; F1, and at once F1 again (or at the other beast); mark.
 -- 3. Try to run; mark (stuck walking?).
 -- 4. If stuck: F2; mark; try to run; mark; stop.
+--
+-- Findings, run 14, part B only (outside, a wild Hippogriff, F2-F4 at
+-- distances; no brush or feed within 10 m: F1 was pressed instead):
+-- - The tools carry their reach: brush and food `InteractRange` 1000, the
+--   same on the native defaults (`Default__CreaturePettingTool`,
+--   `Default__CreatureFeedingTool`) and the spawned Blueprints
+--   (`BP_CreaturePettingTool_C`, `BP_FeedTool_CreatureFeed_C`). The food's
+--   pellet ranges (medium 150, throw 300 spawned; 100, 250 defaults) are
+--   release animations, not reach. The Nab-Sack's
+--   `GetMaxCapturingDistance()` was 1250 (read on the spawned tool only).
+-- - The Hippogriff's `NurtureInteractRange` was 1000, `NurtureInteractCloseRange`
+--   250: the beast's range differs per kind (800 for a Jobberknoll), the
+--   tools' does not.
+-- - Brush at 12.8 m and 10.1 m, food at 13.2 m: `BeginItemUsage` only, no
+--   use task, `TargetCreature` none: out of the tools' 10 m.
+-- - Nab-Sack at 7.8 m and 3.5 m: the catch started; the beast fled and the
+--   catch failed (state 8, `FinishCancelling`) when its `CurrentDistance`
+--   passed 1250.
+-- - Nab-Sack with no auto target (none from the catch until the beast was
+--   focused again, 20 s later): `OnActivate`, `BeginItemUsage`,
+--   `OnDeactivate` at once; nothing more.
+-- - Distances: `GetDistanceTo` and `GetHorizontalDistanceTo` within ~50 cm
+--   on flat ground.
+--
+-- Run 14 (`run = "reach"`): can the game tell whether a beast can be tended
+-- from where the player stands? The tools carry their own reach:
+-- `CreatureInteractionTool.InteractRange` (the brush, `CreaturePettingTool`,
+-- and the food, `CreatureFeedingTool`, which also has
+-- `PelletsMediumReleaseRange` and `PelletsThrowReleaseRange`) and the
+-- Nab-Sack's `GetMaxCapturingDistance()`; the tool's `TargetCreature` may
+-- show whether it took the beast. Polls the beast's distance as run 12 does,
+-- plus `GetHorizontalDistanceTo`, and the active tool's ranges and target.
+-- Keys (each screenshots 300 ms later; the uses as quick-cast does, use then
+-- `EndItemUsage()` at once, logging the tool's ranges and target between):
+--   F1  the tools' ranges: the native classes' defaults
+--       (`Default__CreaturePettingTool`, ...) and every spawned tool
+--   F2  brush
+--   F3  feed (wait for the feed to end before the next one, run 13)
+--   F4  Nab-Sack (outside only, a beast that may be caught)
+--
+-- Run out of combat, quick-cast loaded, RB up; once in a vivarium (F2, F3),
+-- once outside (F2-F4):
+-- 1. Start tracking. F1.
+-- 2. Focus a beast from far away (~15 m). F2; mark: petted?
+-- 3. Walk closer by ~1 m; F2 or F3; mark: did it work? Repeat until it does,
+--    then twice more.
+-- 4. F1 (the tools are spawned now); stop.
 
 local CAPTURE_CLASS = "/Script/Phoenix.CaptureDeviceItemTool"
 local CREATURE_CLASS = "/Script/Phoenix.Creature_Character"
@@ -266,6 +315,12 @@ local SPELL = { name = "Incendio", slot = 2 }
 local NAB_SACK = { item = "CaptureDevice", count = -1, holder = "Toolbox_Storage" }
 -- The beast food, used by run 10.
 local FOOD = { item = "CreatureFeed", count = -1, holder = "Toolbox_Storage" }
+-- The brush, used by run 14.
+local BRUSH = { item = "CreaturePettingBrush", holder = "Toolbox_Storage" }
+-- The tools with a creature target (run 14), by short class name.
+local INTERACTION_CLASS = "/Script/Phoenix.CreatureInteractionTool"
+local FEEDING_CLASS = "/Script/Phoenix.CreatureFeedingTool"
+local TOOL_CLASSES = { "CreaturePettingTool", "CreatureFeedingTool", "CaptureDeviceItemTool" }
 -- How long after the use run 11's F1 releases it: the game's was 0.26 s.
 local RELEASE_MS = 250
 -- Run 12 logs the beast's distance in steps of this many cm.
@@ -545,6 +600,147 @@ local function followRange(dev)
 	end)
 end
 
+---A creature tool's own reach, read from its properties (and the Nab-Sack's
+---getter, on spawned tools only: `live`).
+---@param tool any
+---@param live boolean
+---@return string
+local function toolRanges(tool, live)
+	if tool:IsA(CAPTURE_CLASS) then
+		if not live then
+			return "Nab-Sack defaults"
+		end
+		return ("max capturing %s, current %s"):format(
+			tostring(try(function()
+				return tool:GetMaxCapturingDistance()
+			end)),
+			tostring(try(function()
+				return tool.CurrentDistance
+			end))
+		)
+	end
+	if not tool:IsA(INTERACTION_CLASS) then
+		return "no creature tool"
+	end
+	local text = ("interact %s"):format(tostring(try(function()
+		return tool.InteractRange
+	end)))
+	if tool:IsA(FEEDING_CLASS) then
+		text = text
+			.. (", pellets medium %s, throw %s"):format(
+				tostring(try(function()
+					return tool.PelletsMediumReleaseRange
+				end)),
+				tostring(try(function()
+					return tool.PelletsThrowReleaseRange
+				end))
+			)
+	end
+	return text
+end
+
+---The active tool, its ranges and its target, or why there is none.
+---@param pawn any
+---@return string
+local function activeTool(pawn)
+	local tool = pawn.InventoryToolSetComponent:GetActiveTool()
+	if not tool or not tool:IsValid() then
+		return "no active tool"
+	end
+	local target = tool:IsA(INTERACTION_CLASS) and try(function()
+		return describe(tool.TargetCreature)
+	end) or "-"
+	return ("%s: %s, target %s"):format(describe(tool), toolRanges(tool, true), tostring(target))
+end
+
+---The focused beast's distance, 3D and horizontal, in cm, and the Nab-Sack
+---reach its creature definition gives (`GetCapturingDistanceMax`, read by
+---quick-cast), with the player's `CaptureToolRangeModifier` beside it.
+---@param pawn any
+---@param pc any
+---@return string
+local function beastDistance(pawn, pc)
+	local target = pc:GetBestAutoTargetActor()
+	if not target or not target:IsValid() or not target:IsA(CREATURE_CLASS) then
+		return "no beast"
+	end
+	return ("%s %.0f, horizontal %.0f, definition capturing max %s, range modifier %s"):format(
+		describe(target),
+		pawn:GetDistanceTo(target),
+		pawn:GetHorizontalDistanceTo(target),
+		tostring(try(function()
+			local manager = FindFirstOf("CreatureManager") --[[@as any]]
+			return manager:BP_GetCreatureDefinitionForActor(target):GetCapturingDistanceMax()
+		end)),
+		tostring(try(function()
+			local modifier = pawn.CaptureToolRangeModifier
+			return ("base %s, current %s"):format(tostring(modifier.Base), tostring(modifier.Current))
+		end))
+	)
+end
+
+---Polls the beast's distance and the active tool's ranges and target.
+---@param dev DebugApi
+local function followReach(dev)
+	dev.every(POLL_MS, function()
+		local pawn = dev.pawn() --[[@as any]]
+		local pc = dev.pc() --[[@as any]]
+		if not pawn or not pawn:IsA(PLAYER_CLASS) or not pc then
+			return
+		end
+		dev.track.value("beast.horizontalDistance", try(function()
+			local target = pc:GetBestAutoTargetActor()
+			if not target or not target:IsValid() or not target:IsA(CREATURE_CLASS) then
+				return "no beast"
+			end
+			return math.floor(pawn:GetHorizontalDistanceTo(target) / DISTANCE_STEP) * DISTANCE_STEP
+		end))
+		dev.track.value("tool", try(function()
+			return activeTool(pawn)
+		end))
+	end)
+end
+
+---Every creature tool's ranges: the native defaults and the spawned tools.
+---@return string
+local function allRanges()
+	local lines = {}
+	for _, name in ipairs(TOOL_CLASSES) do
+		local defaults = StaticFindObject("/Script/Phoenix.Default__" .. name)
+		lines[#lines + 1] = ("%s defaults: %s"):format(
+			name,
+			defaults and defaults:IsValid() and tostring(try(function()
+				return toolRanges(defaults, false)
+			end)) or "none"
+		)
+		for _, tool in ipairs(FindAllOf(name) or {}) do
+			if tool:IsValid() then
+				lines[#lines + 1] = ("%s: %s"):format(describe(tool), tostring(try(function()
+					return toolRanges(tool, true)
+				end)))
+			end
+		end
+	end
+	return table.concat(lines, "; ")
+end
+
+---Uses a tool as quick-cast does, logging the beast and the tool between
+---the use and its release.
+---@param pawn any
+---@param dev DebugApi
+---@param item { item: string, holder: string }
+---@return string
+local function useAndRelease(pawn, dev, item)
+	local before = try(function()
+		return beastDistance(pawn, dev.pc())
+	end)
+	local used = pawn:UseInventoryItemByName(FName(item.item), FName(item.holder))
+	local tool = try(function()
+		return activeTool(pawn)
+	end)
+	return ("beast %s; use %s; %s; %s"):format(tostring(before), tostring(used), tostring(tool), release(pawn))
+end
+
 ---@class BeastsExperimentAction
 ---@field key Key
 ---@field name string
@@ -630,6 +826,30 @@ local RUNS = {
 		},
 		{ key = Key.F2, name = "release again", run = release },
 	},
+	reach = {
+		{ key = Key.F1, name = "ranges", run = allRanges },
+		{
+			key = Key.F2,
+			name = "brush",
+			run = function(pawn, dev)
+				return useAndRelease(pawn, dev, BRUSH)
+			end,
+		},
+		{
+			key = Key.F3,
+			name = "feed",
+			run = function(pawn, dev)
+				return useAndRelease(pawn, dev, FOOD)
+			end,
+		},
+		{
+			key = Key.F4,
+			name = "Nab-Sack",
+			run = function(pawn, dev)
+				return useAndRelease(pawn, dev, NAB_SACK)
+			end,
+		},
+	},
 }
 
 ---Binds a run's keys; each runs on the game thread and logs its result in full.
@@ -657,7 +877,7 @@ local function bindActions(dev, actions)
 end
 
 ---@class BeastsExperimentOptions
----@field run "capture"|"slots"|"interact"|"release"|"range"|"repeat" Which run's keys to bind.
+---@field run "capture"|"slots"|"interact"|"release"|"range"|"repeat"|"reach" Which run's keys to bind.
 
 ---@param dev DebugApi
 ---@param options BeastsExperimentOptions
@@ -682,8 +902,11 @@ return function(dev, options)
 		end
 	end
 	followTargets(dev)
-	if options.run == "range" then
+	if options.run == "range" or options.run == "reach" then
 		followRange(dev)
+	end
+	if options.run == "reach" then
+		followReach(dev)
 	elseif options.run == "repeat" then
 		followUse(dev)
 	end

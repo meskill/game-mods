@@ -45,16 +45,16 @@ local CONTEXTS = { "beast", "room", "default" }
 ---@type table<string, QuickCastContextActions>
 local BUTTONS = {
 	Gamepad_FaceButton_Top = { default = "Lumos" },
-	-- room: Altering, modify an object; beast: catch it with the Nab-Sack
+	-- room: Altering, modify an object; beast: feed it
 	Gamepad_FaceButton_Bottom = {
 		default = "Disillusionment",
 		room = "Transformation",
-		beast = { item = "CaptureDevice" },
+		beast = { item = "CreatureFeed" },
 	},
 	-- room: Conjuring, create an object; beast: pet it with the brush
 	Gamepad_FaceButton_Left = { default = "Reparo", room = "Conjuration", beast = { item = "CreaturePettingBrush" } },
-	-- room: Evanesco, remove an object; beast: feed it
-	Gamepad_FaceButton_Right = { default = "Wingardium", room = "Vanishment", beast = { item = "CreatureFeed" } },
+	-- room: Evanesco, remove an object; beast: catch it with the Nab-Sack
+	Gamepad_FaceButton_Right = { default = "Wingardium", room = "Vanishment", beast = { item = "CaptureDevice" } },
 }
 
 -- The button of each slot of a spell set, in slot order: the spell diamond's
@@ -117,7 +117,7 @@ local function contexts(player)
 	return Actions.checker({
 		room = Conjuration.inRoom,
 		beast = function()
-			return Beasts.focused(player) ~= nil
+			return Beasts.focused(player, Conjuration.inRoom()) ~= nil
 		end,
 		default = function()
 			return true
@@ -157,8 +157,11 @@ local passthrough = Passthrough.new({
 	simulate = Input.simulate,
 	now = Clock.now,
 })
--- The current hold of MODIFIER: whether a combo fired, and how long it lasted.
+-- The current hold of MODIFIER: whether a combo fired, how long it lasted,
+-- and the contexts read when it went down.
 local combined, heldFor = false, 0.0
+---@type (fun(context: string): boolean)?
+local holdContexts
 
 Loop.gameThread(POLL_INTERVAL_MS, function()
 	local player = Player.find()
@@ -176,6 +179,10 @@ Loop.gameThread(POLL_INTERVAL_MS, function()
 		-- The panel a click opened is out of gameplay too: its release goes now.
 		passthrough:reset(player and player.controller)
 		combined, heldFor = false, 0
+		-- A menu keeps the hold's contexts, as it keeps the set; a load drops them.
+		if not player then
+			holdContexts = nil
+		end
 		return
 	end
 	local inRoom = Conjuration.inRoom()
@@ -189,6 +196,7 @@ Loop.gameThread(POLL_INTERVAL_MS, function()
 	else
 		blocker:restore()
 		set:restore()
+		holdContexts = nil
 	end
 	-- In the room a plain click of MODIFIER goes to the game after all.
 	if keys:released(MODIFIER) then
@@ -199,18 +207,20 @@ Loop.gameThread(POLL_INTERVAL_MS, function()
 	end
 	-- The set is written when MODIFIER goes down, at least one poll before a
 	-- combo can fire (combos.lua), so the room's outlines are up by the cast.
-	-- Contexts are read for it then; a context changing while MODIFIER is
-	-- held changes the cast, not the set shown.
+	-- Contexts are read for it then and kept for the whole hold: the combos
+	-- run what the set shows, also after turning away from a beast.
 	if held and keys:pressed(MODIFIER) then
-		set:swap(setEntries(contexts(player)))
+		holdContexts = contexts(player)
+		set:swap(setEntries(holdContexts))
 	end
 	if not pressed then
 		return
 	end
-	-- Contexts are read on a combo only, and only those a button lists.
-	local applies = contexts(player)
+	-- A hold that began out of gameplay has none yet: read them at its first
+	-- combo, and keep them too.
+	holdContexts = holdContexts or contexts(player)
 	for _, button in ipairs(pressed) do
-		local action = Actions.pick(BUTTONS[button], CONTEXTS, applies)
+		local action = Actions.pick(BUTTONS[button], CONTEXTS, holdContexts)
 		if action then
 			run(player, action)
 		end

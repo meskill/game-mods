@@ -1,4 +1,4 @@
-local Beasts = require("beasts")
+local Beasts
 
 local CREATURE_CLASS = "/Script/Phoenix.Creature_Character"
 
@@ -10,15 +10,40 @@ local function actor(class)
 		IsA = function(_, other)
 			return other == class
 		end,
-		CreatureAIComponent = { NurtureInteractRange = 800.0 },
 	}
 end
 
 describe("beasts", function()
-	local player, target, fighting, distance
+	local player, target, fighting, distance, defaults, capture
 
 	before_each(function()
-		fighting, target, distance = false, actor(CREATURE_CLASS), 500.0
+		fighting, target, distance, capture = false, actor(CREATURE_CLASS), 500.0, 1250
+		defaults = {
+			["/Script/Phoenix.Default__CreaturePettingTool"] = { InteractRange = 1000.0 },
+			["/Script/Phoenix.Default__CreatureFeedingTool"] = { InteractRange = 900.0 },
+		}
+		_G.StaticFindObject = function(path)
+			return defaults[path]
+		end
+		_G.FindFirstOf = function(class)
+			assert.equals("CreatureManager", class)
+			return {
+				IsValid = function()
+					return true
+				end,
+				BP_GetCreatureDefinitionForActor = function(_, creature)
+					assert.equals(target, creature)
+					return {
+						GetCapturingDistanceMax = function()
+							return capture
+						end,
+					}
+				end,
+			}
+		end
+		-- The tools' reach and the manager are cached per load.
+		package.loaded["beasts"] = nil
+		Beasts = require("beasts")
 		player = {
 			pawn = {
 				InCombatMode = function()
@@ -37,27 +62,49 @@ describe("beasts", function()
 		}
 	end)
 
-	it("finds no beast beyond its nurture range", function()
-		distance = 800.0
-		assert.equals(target, Beasts.focused(player))
-		distance = 801.0
-		assert.is_nil(Beasts.focused(player))
+	after_each(function()
+		_G.StaticFindObject, _G.FindFirstOf = nil, nil
 	end)
 
-	it("finds the creature in focus out of combat", function()
-		assert.equals(target, Beasts.focused(player))
+	it("finds no beast beyond the smallest reach of all tools in the room", function()
+		distance = 900.0
+		assert.equals(target, Beasts.focused(player, true))
+		distance = 901.0
+		assert.is_nil(Beasts.focused(player, true))
+		capture, distance = 800, 801.0
+		assert.is_nil(Beasts.focused(player, true))
+	end)
+
+	it("finds no beast beyond the Nab-Sack's reach for it outside the room", function()
+		distance = 1250.0
+		assert.equals(target, Beasts.focused(player, false))
+		distance = 1251.0
+		assert.is_nil(Beasts.focused(player, false))
+	end)
+
+	it("leaves out a reach it cannot read", function()
+		defaults["/Script/Phoenix.Default__CreatureFeedingTool"] = nil
+		capture, distance = nil, 1.0
+		assert.is_nil(Beasts.focused(player, true))
+		capture, distance = 1250, 1250.0
+		assert.equals(target, Beasts.focused(player, true))
+		defaults["/Script/Phoenix.Default__CreatureFeedingTool"] = { InteractRange = 900.0 }
+		capture = nil
+		assert.is_nil(Beasts.focused(player, false))
+		distance = 900.0
+		assert.equals(target, Beasts.focused(player, false))
 	end)
 
 	it("finds no beast in combat", function()
 		fighting = true
-		assert.is_nil(Beasts.focused(player))
+		assert.is_nil(Beasts.focused(player, false))
 	end)
 
 	it("finds no beast when the focus is no creature, or there is none", function()
 		target = actor("/Script/Phoenix.Spider_Character")
-		assert.is_nil(Beasts.focused(player))
+		assert.is_nil(Beasts.focused(player, false))
 		target = nil
-		assert.is_nil(Beasts.focused(player))
+		assert.is_nil(Beasts.focused(player, false))
 	end)
 
 	describe("use", function()
