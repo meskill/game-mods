@@ -6,15 +6,18 @@ local Log = require("ue4ss.log")
 local Spells = require("hogwarts.spells")
 local Player = require("hogwarts.player")
 local Lumos = require("lumos")
-local Snares = require("snares")
 
 local PLAYER_CLASS = "/Script/Phoenix.Biped_Player"
 local SWITCHED = "/Script/Phoenix.WandTool:OnActiveSpellToolChanged"
--- How often a kept light is forced on, the wand up and the snares' Lumos started.
+local SNARE_ENDED = {
+	"/Script/Phoenix.DevilsSnare:PlayerLumosEnd",
+	"/Script/Phoenix.DevilsSnareDynamic:PlayerLumosEnd",
+}
+-- How often a kept light is forced on, the wand up and ended snares started again.
 local POLL_INTERVAL_MS = 200
 
 local log = Log.new("[LumosKeeper]")
-local keeper = Lumos.keeper(log, Clock.now, Snares.finder(Clock.now))
+local keeper = Lumos.keeper(log, Clock.now)
 
 -- Hooks only record events; the poll below acts on them.
 local spells = Spells.tracker(log)
@@ -34,6 +37,18 @@ local ok, err = pcall(RegisterHook, SWITCHED, function(_, activated)
 end)
 if not ok then
 	log(("Hook %s unavailable: %s"):format(SWITCHED, tostring(err)))
+end
+
+for _, path in ipairs(SNARE_ENDED) do
+	local hookOk, hookErr = pcall(RegisterHook, path, function(context)
+		local snare = (context --[[@as any]]):get()
+		if snare:IsValid() then
+			keeper:snareEnded(snare)
+		end
+	end)
+	if not hookOk then
+		log(("Hook %s unavailable: %s"):format(path, tostring(hookErr)))
+	end
 end
 
 -- A new player (after loading) has no kept light. It is still being

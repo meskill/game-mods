@@ -10,8 +10,9 @@
 -- Devil's Snares follow the player's Lumos with `bPlayerIsUsingLumos`, which
 -- the game's PlayerLumosStart/PlayerLumosEnd set: Start at the Lumos cast, End
 -- when the next spell's cast begins, even though the keeper keeps the light.
--- So every update starts the snares' Lumos where it is off, and releasing the
--- light ends it.
+-- The keeper records each snare the game ends while a cast is watched or kept,
+-- starts it again at the next update, and ends the snares it started when it
+-- releases the light.
 --
 -- Casting Lumos at a kept light switches the wand to the Lumos tool and the
 -- game removes the light 10-20 ms later. A light lost within SWITCH_WINDOW of
@@ -21,6 +22,8 @@
 -- or a new player makes the keeper forget the light.
 --
 -- Hooks only record events; every game call runs from update().
+
+---@alias LumosSnare ADevilsSnare|ADevilsSnareDynamic
 
 ---@alias LumosState
 ---| "off" # Nothing kept; waiting for a Lumos cast.
@@ -52,6 +55,17 @@ local MAX_RESTORES = 5
 -- counts as Lumos cast again.
 local SWITCH_WINDOW = 0.5
 
+---False also when UE4SS rejects the wrapper itself, as it does after the
+---object behind it is gone.
+---@param object UObject
+---@return boolean
+local function isValid(object)
+	local ok, valid = pcall(function()
+		return object:IsValid()
+	end)
+	return ok and valid == true
+end
+
 ---Whether the light is on: active and with its light actor (casting Lumos at
 ---a kept light removes the actor but leaves it active).
 ---@param lumos ALumosSpellTool
@@ -68,7 +82,8 @@ end
 ---@class LumosKeeper
 ---@field private warn fun(message: string) Receives game calls that failed.
 ---@field private now fun(): number Seconds from a clock that never goes backwards.
----@field private snares fun(): LumosSnare[] The loaded Devil's Snares.
+---@field private ended LumosSnare[]
+---@field private started LumosSnare[]
 ---@field private state LumosState
 ---@field private since number The time the state was entered.
 ---@field private lumos? ALumosSpellTool The Lumos spell tool of the cast being kept.
@@ -83,13 +98,13 @@ local Lumos = {}
 
 ---@param warn fun(message: string) Receives game calls that failed.
 ---@param now fun(): number Seconds from a clock that never goes backwards.
----@param snares fun(): LumosSnare[] The loaded Devil's Snares (see snares.lua).
 ---@return LumosKeeper
-function Lumos.keeper(warn, now, snares)
+function Lumos.keeper(warn, now)
 	return setmetatable({
 		warn = warn,
 		now = now,
-		snares = snares,
+		ended = {},
+		started = {},
 		state = "off",
 		since = 0,
 		switchedAt = -math.huge,
@@ -117,35 +132,58 @@ function Keeper:switched(tool)
 	end
 end
 
+---Records a snare whose Lumos the game ended (`PlayerLumosEnd`); update() acts on it.
+---@param snare LumosSnare
+function Keeper:snareEnded(snare)
+	if self.state == "off" then
+		return
+	end
+	local address = snare:GetAddress()
+	for _, known in ipairs(self.ended) do
+		if known:GetAddress() == address then
+			return
+		end
+	end
+	self.ended[#self.ended + 1] = snare
+end
+
 ---@private
 ---@param state LumosState
 ---@param now number
 function Keeper:enter(state, now)
 	self.state, self.since = state, now
+	if state == "off" then
+		self.ended, self.started = {}, {}
+	end
 end
 
 ---Forgets the light without calling the game (objects gone or failing).
 function Keeper:forget()
 	self.state, self.lumos, self.cast, self.switchedAt, self.raised = "off", nil, nil, -math.huge, false
+	self.ended, self.started = {}, {}
 end
 
----Starts (true) or ends (false) the player's Lumos for the snares not in that
----state, as the game does at a Lumos cast and at the next spell.
 ---@private
----@param using boolean
-function Keeper:tellSnares(using)
-	for _, snare in ipairs(self.snares()) do
-		if snare.bPlayerIsUsingLumos ~= using then
-			if using then
-				snare:PlayerLumosStart()
-			else
-				snare:PlayerLumosEnd()
-			end
+function Keeper:startSnares()
+	for _, snare in ipairs(self.ended) do
+		if isValid(snare) then
+			snare:PlayerLumosStart()
+			self.started[#self.started + 1] = snare
+		end
+	end
+	self.ended = {}
+end
+
+---@private
+function Keeper:endSnares()
+	for _, snare in ipairs(self.started) do
+		if isValid(snare) and snare.bPlayerIsUsingLumos then
+			snare:PlayerLumosEnd()
 		end
 	end
 end
 
----Puts the kept light out, clears the arm request and ends the snares' Lumos.
+---Puts the kept light out, clears the arm request and ends the snares' Lumos it started.
 ---@private
 ---@param pawn ABiped_Player
 ---@param now number
@@ -155,13 +193,13 @@ function Keeper:release(pawn, now)
 	if self.raised then
 		pawn:SetRightArmState(ARM_NONE, ARM_PRIORITY, true)
 	end
-	self:tellSnares(false)
+	self:endSnares()
 	self.lumos, self.raised = nil, false
 	self:enter("off", now)
 end
 
----Forces the kept light on, the wand up and the snares' Lumos started, unless
----Lumos was cast at the light.
+---Forces the kept light on, the wand up and the snares' Lumos started again,
+---unless Lumos was cast at the light.
 ---@private
 ---@param pawn ABiped_Player
 ---@param now number
@@ -189,7 +227,7 @@ function Keeper:force(pawn, now)
 		pawn:SetRightArmState(ARM_LUMOS, ARM_PRIORITY, true)
 		self.raised = true
 	end
-	self:tellSnares(true)
+	self:startSnares()
 end
 
 ---@private
