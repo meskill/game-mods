@@ -4,8 +4,7 @@ local Lumos = require("lumos")
 -- the game and the keeper share.
 local ARM = "arm 14@8 true"
 local LOWER = "arm 0@8 true"
--- Held up at FullBodyUnderLumos over the cancel, which clears the Lumos request.
-local KEEP = { "arm 14@7 true", "deactivate", "cancel", "activate", ARM, "arm 0@7 true" }
+local KEEP = {}
 local RESTORE = { "deactivate", "activate" }
 
 local function valid()
@@ -90,16 +89,6 @@ local function scene()
 		return snare
 	end
 
-	local wand = { IsValid = valid }
-	function wand:CancelCurrentSpell()
-		calls[#calls + 1] = "cancel"
-		-- Cancelling the Lumos cast clears its arm request.
-		s.request = 0
-	end
-	function pawn:GetWand()
-		return wand
-	end
-
 	s.lumos, s.other, s.pawn = lumos, other, pawn
 	return s
 end
@@ -157,8 +146,8 @@ local function calls(...)
 	return all
 end
 
----A keeper that kept a Lumos cast at 0.2 s from 0.8 s; the game's arm request
----holds the wand up.
+---A keeper that kept a Lumos cast at 0.2 s from 0.8 s; the game's cast holds
+---the light and the wand up.
 local function kept(s)
 	local keeper = newKeeper(s)
 	cast(s, keeper)
@@ -170,16 +159,15 @@ local function kept(s)
 end
 
 describe("lumos", function()
-	it("moves a cast's light off the cast at the first update where it is lit", function()
+	it("leaves a lit cast's light and wand to the game", function()
 		local s = scene()
 		local keeper = newKeeper(s)
 		keeper:fired({ name = "lumos", spell = s.lumos })
 		update(s, keeper, 0.2)
-		assert.same({}, s.calls)
-
 		s.lumos.lit, s.lumos.shining, s.request = true, true, 14
-		update(s, keeper, 0.4)
-		assert.same(KEEP, s.calls)
+		update(s, keeper, 0.25)
+		update(s, keeper, 0.3)
+		assert.same({}, s.calls)
 	end)
 
 	it("leaves a cast that does not light to the game", function()
@@ -207,15 +195,15 @@ describe("lumos", function()
 		assert.same({}, s.calls)
 	end)
 
-	it("forces the light on and the wand up on every update while kept", function()
+	it("restores the light and the wand the game takes away while kept", function()
 		local s = scene()
 		local keeper = kept(s)
 		update(s, keeper, 1)
 		assert.same({}, s.calls)
 
-		-- Something put the light out and dropped the arm request.
-		s.lumos.shining, s.request = false, 0
-		update(s, keeper, 1.2)
+		-- Another spell ended the cast: the game put the light out and dropped the arm request.
+		s.lumos.lit, s.lumos.shining, s.request = false, false, 0
+		update(s, keeper, 1.05)
 		assert.same(calls(RESTORE, ARM), s.calls)
 	end)
 
@@ -227,15 +215,15 @@ describe("lumos", function()
 			self.lit = true
 		end
 		s.lumos.shining = false
-		for i = 1, 5 do
-			update(s, keeper, 1 + i * 0.2)
+		for i = 1, 20 do
+			update(s, keeper, 1 + i * 0.05)
 		end
 		clear(s)
-		update(s, keeper, 2.2)
+		update(s, keeper, 2.05)
 		assert.same({ "deactivate", LOWER }, s.calls)
 
 		clear(s)
-		update(s, keeper, 2.4)
+		update(s, keeper, 2.1)
 		assert.same({}, s.calls)
 	end)
 

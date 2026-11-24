@@ -13,8 +13,9 @@ local SNARE_ENDED = {
 	"/Script/Phoenix.DevilsSnare:PlayerLumosEnd",
 	"/Script/Phoenix.DevilsSnareDynamic:PlayerLumosEnd",
 }
--- How often a kept light is forced on, the wand up and ended snares started again.
-local POLL_INTERVAL_MS = 200
+-- How often the keeper checks the light, the wand and the snares: a light the
+-- game turns off is back within this time.
+local POLL_INTERVAL_MS = 50
 
 local log = Log.new("[LumosKeeper]")
 local keeper = Lumos.keeper(log, Clock.now)
