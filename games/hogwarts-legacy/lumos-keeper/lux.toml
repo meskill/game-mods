@@ -1,5 +1,5 @@
 package = "hogwarts-legacy-lumos-keeper"
-version = "1.0.0"
+version = "1.0.1"
 lua = "5.4"
 
 [dependencies.hogwarts-legacy]

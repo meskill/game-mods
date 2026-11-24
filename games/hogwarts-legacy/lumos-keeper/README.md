@@ -4,9 +4,9 @@ The Lumos spell won't be disabled anymore after any action that turns it off in 
 
 ## How it works
 
-- the mod tracks when Lumos is cast and retriggers the light every 200 ms so the other actions like spells and rolls that usually turn it off don't affect this anymore.
+- the mod tracks when Lumos is cast and turns the light back on when other actions like spells and rolls turn it off.
 - when Lumos is cast again while active the mod will turn it off.
-- on mounts the mod resets its active state.
+- on mounts the mod turns the light off.
 - the kept light of Lumos always affects the Devil's Snares, so they won't hurt the player.
 
 ```mermaid

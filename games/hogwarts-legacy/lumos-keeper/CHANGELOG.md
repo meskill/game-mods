@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] - 2026-11-25
+
+### Fixed
+
+- No more lag spikes near Devil's Snares while the light is kept.
+- The light no longer turns on twice at the Lumos cast, and the wand no longer dips right after it.
+
 ## [1.0.0] - 2026-11-22
 
 ### Added
